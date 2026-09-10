@@ -1,0 +1,13 @@
+include README.md
+include INSTALL.md
+include BATCH_COMMAND_EXAMPLES.md
+recursive-include src/magsurveypy/assets *.png
+recursive-include src/magsurveypy/web *.html
+recursive-include docs *.md
+recursive-include examples *.sh *.ps1
+recursive-include templates *.csv
+
+include LICENSE
+include CITATION.cff
+include CONTRIBUTING.md
+include SECURITY.md

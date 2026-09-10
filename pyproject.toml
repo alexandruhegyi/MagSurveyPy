@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magsurveypy"
+version = "1.0.0"
+description = "Archaeological Magnetometry Prospection Suite"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"
+authors = [
+  { name = "Alexandru Hegyi", email = "alexandruhegyi@gmail.com" }
+]
+keywords = [
+  "archaeology",
+  "archaeological geophysics",
+  "magnetometry",
+  "geophysics",
+  "GIS",
+  "magnetic prospection"
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: BSD License",
+  "Natural Language :: English",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: GIS"
+]
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "pandas>=2.0",
+  "pyproj>=3.6",
+  "rasterio>=1.3",
+  "affine>=2.4",
+  "matplotlib>=3.8",
+  "tqdm>=4.66",
+  "scikit-image>=0.22",
+  "Pillow>=10",
+  "geopandas>=0.14",
+  "shapely>=2.0",
+  "threadpoolctl>=3.1",
+  "contextily>=1.5",
+  "xyzservices>=2024.4.0",
+  "metpy>=1.6",
+  "ppigrf>=2.0.0",
+  "pyogrio>=0.9"
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "pytest>=8",
+  "ruff>=0.6"
+]
+
+[project.scripts]
+mspy = "magsurveypy.cli:main"
+
+[project.urls]
+Homepage = "https://alexandruhegyi.com"
+Documentation = "https://github.com/alexandruhegyi/MagSurveyPy"
+Source = "https://github.com/alexandruhegyi/MagSurveyPy"
+Issues = "https://github.com/alexandruhegyi/MagSurveyPy/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+magsurveypy = [
+  "assets/*.png",
+  "web/*.html"
+]

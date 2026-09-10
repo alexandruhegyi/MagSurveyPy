@@ -1,0 +1,7 @@
+# Optional specialist/AI features only.
+# The standard MagSurveyPy workflow, scientific exports, basemaps, reprojection,
+# contours, PRM processing, interpolation and GIS output do NOT require these.
+#
+# SAM-based segmentation can require a separate ML/GDAL environment:
+# samgeo
+# torch
