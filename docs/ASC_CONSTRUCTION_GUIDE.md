@@ -1,4 +1,4 @@
-# ASC Construction Guide — MagSurveyPy Version 1.0.1
+# ASC Construction Guide — MagSurveyPy Version 1.0.2
 
 The ASC is the authoritative normalized measurement product for PRM projects.
 

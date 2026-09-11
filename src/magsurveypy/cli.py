@@ -116,7 +116,7 @@ def apply_environment_modifiers(args):
         notes.append("environment=quiet: no extra correction enabled")
     return notes
 
-APP_VERSION='1.0.1'
+APP_VERSION='1.0.2'
 APP_AUTHOR='Alexandru Hegyi, PhD'
 APP_WEBSITE='https://alexandruhegyi.com'
 APP_NAME='MagSurveyPy'
@@ -140,7 +140,7 @@ def _apply_magsurveypy_plot_style():
 
 
 _TOP_HELP=r"""
-MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.1
+MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.2
 ======================================================================
 Developed by Alexandru Hegyi, PhD
 Website: https://alexandruhegyi.com
@@ -15991,7 +15991,7 @@ New projects use scientific acquisition-class names only. Original measurements 
 
 
 _GROUP_TOP_HELP=r"""
-MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.1
+MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.2
 =======================================================================
 Developed by Alexandru Hegyi, PhD
 Website: https://alexandruhegyi.com
@@ -18087,7 +18087,7 @@ def _web_make_handler(pp):
             'WIDTH':str(int(shape[1])),'HEIGHT':str(int(shape[0]))
         })
         p=urlsplit(url); full=urlunsplit((p.scheme,p.netloc,p.path,urlencode(params),p.fragment))
-        req=Request(full,headers={'User-Agent':'MagSurveyPy/1.0.1'})
+        req=Request(full,headers={'User-Agent':'MagSurveyPy/1.0.2'})
         with urlopen(req,timeout=30) as r:
             raw=r.read()
         im=Image.open(io.BytesIO(raw)).convert('RGBA').resize((shape[1],shape[0]))
@@ -18212,7 +18212,7 @@ def _web_make_handler(pp):
         out=map_dir/f'{_safe_project_name(pp["root"].name)}_webgis_map_{time.strftime("%Y%m%d_%H%M%S")}.{fmt}'; fig.savefig(out,dpi=dpi,bbox_inches='tight',pad_inches=.06); plt.close(fig); return out
 
     class Handler(BaseHTTPRequestHandler):
-        server_version='MagSurveyPyMiniGIS/1.0.1'
+        server_version='MagSurveyPyMiniGIS/1.0.2'
         def log_message(self,format,*args):
             if getattr(self.server,'quiet',False): return
             super().log_message(format,*args)

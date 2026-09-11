@@ -1,4 +1,4 @@
-# PRM Phase Decoding Guide — MagSurveyPy Version 1.0.1
+# PRM Phase Decoding Guide — MagSurveyPy Version 1.0.2
 
 The SENSYS FGM650 magnetic sample word is decoded as two fields rather than treated as a conventional wrapped scalar.
 

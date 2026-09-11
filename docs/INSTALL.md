@@ -1,4 +1,4 @@
-# MagSurveyPy v1.0.1 — Installation
+# MagSurveyPy v1.0.2 — Installation
 
 MagSurveyPy supports Python 3.11 and newer. The installed command-line interface is `mspy`.
 

@@ -193,7 +193,7 @@ def georeference_tiff(
     recipe_path: str | Path | None = None,
     gcp_csv_path: str | Path | None = None,
     software: str = "MagSurveyPy",
-    version: str = "1.0.1",
+    version: str = "1.0.2",
 ) -> dict:
     """Assign a least-squares affine transform and CRS without resampling values."""
     import rasterio

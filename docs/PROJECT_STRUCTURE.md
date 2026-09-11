@@ -1,6 +1,6 @@
 # MagSurveyPy Project Structure
 
-New MagSurveyPy v1.0.1 projects use acquisition-class names rather than manufacturer names.
+New MagSurveyPy v1.0.2 projects use acquisition-class names rather than manufacturer names.
 
 ```text
 ~/MagSurveyPy_Projects/

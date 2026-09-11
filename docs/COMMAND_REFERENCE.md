@@ -1,4 +1,4 @@
-# Command Reference — Public v1.0.1 Interface
+# Command Reference — Public v1.0.2 Interface
 
 The installed executable is `mspy`.
 
