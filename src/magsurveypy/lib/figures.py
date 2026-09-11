@@ -69,6 +69,25 @@ def _pin_colorbar_endpoints(cb,im):
         cb.set_ticks(clean); axis=cb.ax.yaxis if getattr(cb,'orientation','vertical')=='vertical' else cb.ax.xaxis; axis.set_major_formatter(FuncFormatter(lambda x,pos:_format_cb_tick(x))); cb.update_ticks()
     except Exception: pass
 
+def _adaptive_colorbar_ticks(cb,im,tick_fontsize=7.0):
+    try:
+        from matplotlib.ticker import MaxNLocator,FuncFormatter
+        fig=cb.ax.figure; fig.canvas.draw(); lo=float(im.norm.vmin); hi=float(im.norm.vmax)
+        if not (np.isfinite(lo) and np.isfinite(hi) and hi>lo): return
+        orient=getattr(cb,'orientation','vertical'); bbox=cb.ax.get_window_extent(renderer=fig.canvas.get_renderer()); long_px=float(bbox.width if orient=='horizontal' else bbox.height)
+        max_chars=max(len(_format_cb_tick(lo)),len(_format_cb_tick(hi))); fs=max(5.0,float(tick_fontsize)); label_px=max(18.0,max_chars*.58*fs*fig.dpi/72.0)
+        max_ticks=max(2,min(6,int(long_px/max(label_px*1.35,1.0)))) if orient=='horizontal' else max(3,min(6,int(long_px/max(fs*fig.dpi/72.0*2.1,1.0))))
+        vals=[float(x) for x in MaxNLocator(nbins=max(1,max_ticks-1),steps=[1,2,2.5,5,10],min_n_ticks=2).tick_values(lo,hi) if lo<float(x)<hi]
+        guard=max(abs(hi-lo)*.06,1e-12); vals=[x for x in vals if x-lo>guard and hi-x>guard]
+        if len(vals)>max_ticks-2:
+            vals=[] if max_ticks<=2 else [vals[i] for i in np.linspace(0,len(vals)-1,max_ticks-2,dtype=int)]
+        ticks=[lo,*vals,hi]; clean=[]; tol=max(abs(hi-lo)*1e-10,1e-12)
+        for x in ticks:
+            if not clean or abs(x-clean[-1])>tol: clean.append(x)
+        cb.set_ticks(clean); axis=cb.ax.xaxis if orient=='horizontal' else cb.ax.yaxis; fmt=FuncFormatter(lambda x,pos:_format_cb_tick(x)); cb.formatter=fmt; axis.set_major_formatter(fmt); cb.update_ticks(); axis.get_offset_text().set_visible(False)
+    except Exception: _pin_colorbar_endpoints(cb,im)
+
+
 def _limits(a,display_range=None,display_min=None,display_max=None):
     v=a[np.isfinite(a)]; med=float(np.median(v)) if len(v) else 0.0
     if display_min is not None or display_max is not None:
@@ -89,7 +108,7 @@ def _recipe_colorbar(fig,ax,im,label,p,shared):
     else: cax=divider.append_axes('right',size=thick,pad=float(p.get('colorbar_pad',.12))); cb=fig.colorbar(im,cax=cax,orientation='vertical')
     cb.set_label(str(label),fontsize=float(p.get('colorbar_label_size',shared.get('colorbar_label_size',8))))
     cb.ax.tick_params(labelsize=float(p.get('colorbar_tick_size',shared.get('colorbar_tick_size',7))))
-    cb.outline.set_linewidth(.6); _pin_colorbar_endpoints(cb,im); return cb
+    cb.outline.set_linewidth(.6); _adaptive_colorbar_ticks(cb,im,float(p.get('colorbar_tick_size',shared.get('colorbar_tick_size',7)))); return cb
 
 
 def _recipe_scale_bar(ax,bounds,crs,p,shared):

@@ -1,6 +1,6 @@
 # MagSurveyPy Documentation
 
-**MagSurveyPy v1.0.0 — Archaeological Magnetometry Prospection Suite**
+**MagSurveyPy v1.0.1 — Archaeological Magnetometry Prospection Suite**
 
 Start with:
 

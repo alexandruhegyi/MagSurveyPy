@@ -1,12 +1,23 @@
 cff-version: 1.2.0
-message: "If you use MagSurveyPy in research, please cite the software and the associated publication when available."
+message: "If you use MagSurveyPy in research, please cite the scientific description and the specific software version used."
 title: "MagSurveyPy: Archaeological Magnetometry Prospection Suite"
 type: software
 license: BSD-3-Clause
 authors:
   - family-names: "Hegyi"
     given-names: "Alexandru"
-version: 1.0.0
-date-released: 2026-09-10
+    affiliation: "Department of Geosciences, University of Oslo"
+version: 1.0.1
+date-released: 2026-09-11
 url: "https://github.com/alexandruhegyi/MagSurveyPy"
 repository-code: "https://github.com/alexandruhegyi/MagSurveyPy"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Hegyi"
+      given-names: "Alexandru"
+      affiliation: "Department of Geosciences, University of Oslo"
+  title: "MagSurveyPy: An Open-Source Framework for Archaeological Magnetometry Processing and Spatial Analysis"
+  year: 2026
+  publisher: "Zenodo"
+  doi: "10.5281/zenodo.22709406"

@@ -116,7 +116,7 @@ def apply_environment_modifiers(args):
         notes.append("environment=quiet: no extra correction enabled")
     return notes
 
-APP_VERSION='1.0.0'
+APP_VERSION='1.0.1'
 APP_AUTHOR='Alexandru Hegyi, PhD'
 APP_WEBSITE='https://alexandruhegyi.com'
 APP_NAME='MagSurveyPy'
@@ -140,7 +140,7 @@ def _apply_magsurveypy_plot_style():
 
 
 _TOP_HELP=r"""
-MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.0
+MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.1
 ======================================================================
 Developed by Alexandru Hegyi, PhD
 Website: https://alexandruhegyi.com
@@ -873,6 +873,25 @@ def magnetic_unit():
 
 def magnetic_label(prefix="Bz"):
     return f"{prefix} [{magnetic_unit()}]" if CURRENT_VALUE_UNITS != "unknown" else prefix
+
+def _raster_magnetic_unit(path, default="magnetic units"):
+    """Read a quantitative magnetic unit from raster metadata/description.
+
+    This affects labels only; raster values are never converted here.
+    """
+    try:
+        import rasterio
+        with rasterio.open(path) as ds:
+            parts=[str(x) for x in (ds.descriptions or ()) if x]
+            tags=ds.tags(); parts += [str(tags.get(k,'')) for k in ('units','unit','UNIT','value_units','VALUE_UNITS') if tags.get(k)]
+        text=' '.join(parts).lower().replace(' ','')
+        if 'nt/m' in text or 'ntm-1' in text or 'ntpermetre' in text or 'ntpermeter' in text:
+            return 'nT/m'
+        if 'nt' in text:
+            return 'nT'
+    except Exception:
+        pass
+    return default
 
 VALID_INTERPOLATIONS = (
     "none", "fill", "nearest", "idw", "local-idw", "tin-linear", "tin-cubic", "survey-local", "archaeology-safe", "dipole-safe",
@@ -2639,7 +2658,15 @@ def linear_limits(grid,args,attribute):
     if attribute in {"subtle_residual","dog","log"}:
         lim=max(args.subtle_display_sigma*grid_robust_scale(grid),1e-9); return -lim,lim
     if args.display_min is not None: return args.display_min,args.display_max
-    lim=args.display_range if args.display_range>0 else max(abs(np.percentile(f,1)),abs(np.percentile(f,99))); return -max(lim,1e-9),max(lim,1e-9)
+    if args.display_range>0:
+        lim=max(float(args.display_range),1e-9)
+        # Display-only safeguard for absolute total-field rasters. A range such
+        # as 15 nT means ±15 nT about the field baseline, not about numerical
+        # zero (e.g. ~48,500 nT). Residual/gradient products remain zero-centred.
+        med=float(np.median(f)); spread=max(float(np.percentile(np.abs(f-med),98)),1e-9)
+        if abs(med)>max(10.0*lim,20.0*spread): return med-lim,med+lim
+        return -lim,lim
+    lim=max(abs(np.percentile(f,1)),abs(np.percentile(f,99))); return -max(lim,1e-9),max(lim,1e-9)
 
 
 def safe_crs_suffix(crs_text):
@@ -2939,6 +2966,31 @@ def _spatial_array(grid,args):
     raise ValueError(f"Unknown array orientation: {orient}")
 
 
+def _native_png_dirs(root):
+    """Return the uniform processing-PNG tree used by every project stage."""
+    base=Path(root)/'PNG'
+    out={
+        'base':base,
+        'comparison':base/'Comparison',
+        'products':base/'Products',
+        'qc':base/'QC',
+        'diagnostics':base/'Diagnostics',
+    }
+    for q in out.values(): q.mkdir(parents=True,exist_ok=True)
+    return out
+
+
+def _png_category_for_name(name):
+    n=str(name).lower()
+    if any(k in n for k in ('comparison','compare','audit_figure','before_after')):
+        return 'Comparison'
+    if any(k in n for k in ('_qc','qc_','quality','performance')):
+        return 'QC'
+    if any(k in n for k in ('spectrum','noise','diagnostic','gallery','distribution','histogram','support')):
+        return 'Diagnostics'
+    return 'Products'
+
+
 def _output_group_for(path):
     name=path.name.lower(); suf=path.suffix.lower()
     if "basemap" in name or "_osm" in name or "_satellite" in name:
@@ -2946,7 +2998,7 @@ def _output_group_for(path):
     if suf in {".tif",".tiff"}:
         return "GeoTIFF"
     if suf==".png":
-        return "PNG"
+        return f"PNG/{_png_category_for_name(path.name)}"
     if suf==".asc":
         return "ASC"
     if suf in {".shp",".shx",".dbf",".prj",".cpg",".gpkg",".geojson"}:
@@ -2961,7 +3013,7 @@ def organize_outputs(root, outputs, flat=False):
     root=Path(root)
     if flat:
         return outputs
-    groups=("ASC","GeoTIFF","PNG","Reports","Vectors","Basemaps","GNSS")
+    groups=("ASC","GeoTIFF","Reports","Vectors","Basemaps","GNSS","PNG/Comparison","PNG/Products","PNG/QC","PNG/Diagnostics")
     for g in groups:
         (root/g).mkdir(parents=True,exist_ok=True)
     moved=[]
@@ -2970,8 +3022,12 @@ def organize_outputs(root, outputs, flat=False):
         src=Path(src)
         if not src.exists():
             continue
-        # Already in a grouped directory.
-        if src.parent.name in groups:
+        # Already in a grouped directory (including nested PNG categories).
+        try:
+            rel_parent=src.parent.relative_to(root).as_posix()
+        except Exception:
+            rel_parent=''
+        if rel_parent in groups:
             moved.append(src); continue
         group=_output_group_for(src)
         dst=root/group/src.name
@@ -3170,10 +3226,54 @@ def _pin_colorbar_endpoints(cb, mappable):
                 clean.append(x)
         cb.set_ticks(clean)
         axis=cb.ax.yaxis if getattr(cb,'orientation','vertical')=='vertical' else cb.ax.xaxis
-        axis.set_major_formatter(FuncFormatter(lambda x,pos:_format_colorbar_tick(x)))
-        cb.update_ticks()
+        fmt=FuncFormatter(lambda x,pos:_format_colorbar_tick(x)); cb.formatter=fmt; axis.set_major_formatter(fmt)
+        cb.update_ticks(); axis.get_offset_text().set_visible(False)
     except Exception:
         pass
+    return cb
+
+
+def _adaptive_colorbar_ticks(cb, mappable, *, tick_fontsize=7.0):
+    """Choose readable full-value ticks for compact native and publication bars.
+
+    Horizontal bars carrying absolute total-field values (often five digits) need
+    fewer ticks than residual/gradient bars.  The tick budget is estimated from
+    the rendered physical bar length and the formatted endpoint labels, so labels
+    do not overlap while exact numerical endpoints remain visible.
+    """
+    try:
+        from matplotlib.ticker import MaxNLocator, FuncFormatter
+        fig=cb.ax.figure; fig.canvas.draw()
+        lo=float(mappable.norm.vmin); hi=float(mappable.norm.vmax)
+        if not (np.isfinite(lo) and np.isfinite(hi) and hi>lo): return cb
+        orientation=getattr(cb,'orientation','vertical')
+        bbox=cb.ax.get_window_extent(renderer=fig.canvas.get_renderer())
+        long_px=float(bbox.width if orientation=='horizontal' else bbox.height)
+        labels=[_format_colorbar_tick(lo),_format_colorbar_tick(hi)]
+        max_chars=max(len(x) for x in labels)
+        fs=max(5.0,float(tick_fontsize)); approx_label_px=max(18.0,max_chars*0.58*fs*fig.dpi/72.0)
+        if orientation=='horizontal':
+            max_ticks=max(2,min(6,int(long_px/max(approx_label_px*1.35,1.0))))
+        else:
+            max_ticks=max(3,min(6,int(long_px/max(fs*fig.dpi/72.0*2.1,1.0))))
+        locator=MaxNLocator(nbins=max(1,max_ticks-1),steps=[1,2,2.5,5,10],min_n_ticks=2)
+        interior=[float(x) for x in locator.tick_values(lo,hi) if lo<float(x)<hi]
+        guard=max(abs(hi-lo)*.06,1e-12)
+        interior=[x for x in interior if x-lo>guard and hi-x>guard]
+        if len(interior)>max_ticks-2:
+            if max_ticks<=2: interior=[]
+            else:
+                idx=np.linspace(0,len(interior)-1,max_ticks-2,dtype=int); interior=[interior[i] for i in idx]
+        ticks=[lo,*interior,hi]
+        clean=[]; tol=max(abs(hi-lo)*1e-10,1e-12)
+        for x in ticks:
+            if not clean or abs(x-clean[-1])>tol: clean.append(x)
+        cb.set_ticks(clean)
+        axis=cb.ax.xaxis if orientation=='horizontal' else cb.ax.yaxis
+        fmt=FuncFormatter(lambda x,pos:_format_colorbar_tick(x)); cb.formatter=fmt; axis.set_major_formatter(fmt)
+        cb.update_ticks(); axis.get_offset_text().set_visible(False)
+    except Exception:
+        _pin_colorbar_endpoints(cb,mappable)
     return cb
 
 
@@ -3206,7 +3306,7 @@ def _publication_colorbar(fig, ax, mappable, label, position="right", *, focus=F
         cb.set_ticklabels(["−1","−0.5","0","+0.5","+1"])
         cb.set_label("Relative subtle contrast",fontsize=fontsize,labelpad=2 if pos=="bottom" else 4)
     else:
-        _pin_colorbar_endpoints(cb,mappable)
+        _adaptive_colorbar_ticks(cb,mappable,tick_fontsize=tfs)
     return cb
 
 def _attached_colorbar(fig, ax, im, args, label, *, focus=False):
@@ -3245,7 +3345,7 @@ def _publication_shared_colorbar(fig, axes, mappable, label, position="right", *
         cb.set_label(label,fontsize=fontsize,labelpad=2)
         cb.ax.tick_params(axis="x",labelsize=max(5,float(tick_fontsize if tick_fontsize is not None else max(6,fontsize-1))),pad=1.4,length=2.4,width=.6)
     cb.outline.set_linewidth(.6)
-    _pin_colorbar_endpoints(cb,mappable)
+    _adaptive_colorbar_ticks(cb,mappable,tick_fontsize=max(5,float(tick_fontsize if tick_fontsize is not None else max(6,fontsize-1))))
     return cb
 
 
@@ -3317,7 +3417,8 @@ def write_linear_preview(path, grid, extent, args, attribute):
     ax.set_xlabel("Easting [m]", labelpad=6)
     ax.set_ylabel("Northing [m]", labelpad=14)
     _format_projected_axes(ax, extent, target_x=6, target_y=4, fontsize=8)
-    _decorate_map_axis(ax, extent, args, north=True, scale=True, crs=True)
+    # Native processing previews remain intentionally undecorated. Publication
+    # cartography (north arrow, scale bar, CRS badge) belongs to figure/export.
     label = "Relative contrast (display only)" if nonlinear else attribute_label(attribute)
     _attached_colorbar(fig,ax,im,args,label,focus=nonlinear)
     _save_single_map(fig,path,args)
@@ -3335,13 +3436,39 @@ def write_focus_preview(path, display_grid, extent, args, footer):
     ax.set_xlabel("Easting [m]", labelpad=6)
     ax.set_ylabel("Northing [m]", labelpad=14)
     _format_projected_axes(ax, extent, target_x=6, target_y=4, fontsize=8)
-    _decorate_map_axis(ax, extent, args, north=True, scale=True, crs=True)
     _attached_colorbar(fig,ax,im,args,"Relative subtle contrast",focus=True)
-    # Processing note stays outside the map, tiny and unobtrusive.
-    if footer:
-        fig.text(.015,.012,footer,ha="left",va="bottom",fontsize=6.3,color="0.3")
+    # Keep automatic processing PNGs free of footer prose. Detailed processing
+    # information remains available in the accompanying Reports/ products.
     _save_single_map(fig,path,args)
     plt.close(fig)
+
+def _native_three_panel_comparison(path, source, result, removed, titles=('Source','Result','Removed component'), unit_label='Magnetic value'):
+    """Write the common native processing comparison used across stages.
+
+    Source and result use one common robust quantitative scale, which makes the
+    visual comparison direct. The removed component has its own zero-centred
+    scale. Two bars (rather than three) keep long absolute-field labels readable
+    and prevent adjacent panel legends from colliding.
+    """
+    import matplotlib.pyplot as plt
+    src=np.asarray(source,float); res=np.asarray(result,float); rem=np.asarray(removed,float)
+    both=np.concatenate([src[np.isfinite(src)],res[np.isfinite(res)]])
+    if len(both):
+        center=float(np.nanmedian(both)); lim=max(float(np.nanpercentile(np.abs(both-center),98)),1e-9)
+    else: center=0.0; lim=1.0
+    rvals=rem[np.isfinite(rem)]; rlim=max(float(np.nanpercentile(np.abs(rvals),98)) if len(rvals) else lim,1e-9)
+    fig,axs=plt.subplots(1,3,figsize=(13.6,4.65),constrained_layout=False)
+    fig.subplots_adjust(left=.025,right=.985,bottom=.18,top=.91,wspace=.12)
+    ims=[]
+    for i,(ax,dat,title) in enumerate(zip(axs,(src,res,rem),titles)):
+        lo,hi=(center-lim,center+lim) if i<2 else (-rlim,rlim)
+        im=ax.imshow(dat,origin='upper',cmap='gray_r',vmin=lo,vmax=hi,interpolation='nearest')
+        ims.append(im); ax.set_title(title,fontsize=10); ax.set_axis_off()
+    _publication_shared_colorbar(fig,axs[:2],ims[0],unit_label,'bottom',fontsize=7.5,tick_fontsize=6.5,thickness=.085,pad=.22)
+    _publication_colorbar(fig,axs[2],ims[2],unit_label,'bottom',fontsize=7.5,tick_fontsize=6.5,thickness=.085,pad=.22)
+    path=Path(path); path.parent.mkdir(parents=True,exist_ok=True)
+    fig.savefig(path,dpi=220,bbox_inches='tight',pad_inches=.06); plt.close(fig); return path
+
 
 def write_comparison(path, panels, extent, args):
     import matplotlib.pyplot as plt
@@ -3673,7 +3800,7 @@ def write_project_html_report(root, prefix):
     root=Path(root); rep=root/'Reports'; rep.mkdir(parents=True,exist_ok=True)
     out=rep/f'{prefix}_archaeology_report.html'
     png_dir=root/'PNG'; tif_dir=root/'GeoTIFF'; vec_dir=root/'Vectors'
-    pngs=sorted(png_dir.glob(f'{prefix}*.png')) if png_dir.exists() else sorted(root.glob(f'{prefix}*.png'))
+    pngs=sorted(png_dir.rglob(f'{prefix}*.png')) if png_dir.exists() else sorted(root.glob(f'{prefix}*.png'))
     tifs=sorted(tif_dir.glob(f'{prefix}*.tif')) if tif_dir.exists() else sorted(root.glob(f'{prefix}*.tif'))
     vectors=[]
     if vec_dir.exists(): vectors=sorted(list(vec_dir.glob(f'{prefix}*.gpkg'))+list(vec_dir.glob(f'{prefix}*.shp')))
@@ -4024,7 +4151,7 @@ def write_relative_preview(path,grid,extent,title,args,cmap='gray_r',symmetric=T
         hi=max(float(np.percentile(np.abs(vals),99)),1e-9); lo=-hi
     else: lo=float(np.percentile(vals,1)); hi=float(np.percentile(vals,99)); hi=max(hi,lo+1e-9)
     disp=_spatial_array(grid,args)
-    im=ax.imshow(disp,origin='upper',extent=extent,cmap=cmap,vmin=lo,vmax=hi,interpolation='nearest'); ax.set_title(title); _format_projected_axes(ax,extent,fontsize=8); fig.colorbar(im,ax=ax,shrink=.82,pad=.025); fig.savefig(path,dpi=max(220,int(getattr(args,'figure_dpi',220))),bbox_inches='tight'); plt.close(fig)
+    im=ax.imshow(disp,origin='upper',extent=extent,cmap=cmap,vmin=lo,vmax=hi,interpolation='nearest'); ax.set_title(title); _format_projected_axes(ax,extent,fontsize=8); _publication_colorbar(fig,ax,im,attribute_label('value'),getattr(args,'colorbar_position','right'),fontsize=7.5); fig.savefig(path,dpi=max(220,int(getattr(args,'figure_dpi',220))),bbox_inches='tight'); plt.close(fig)
 
 
 def write_archaeology_gallery(path,reference,restored,wallis,persistence,morph_signed,edges,extent,args,analysis_source=None,analysis_label='Analysis source'):
@@ -4039,7 +4166,7 @@ def write_archaeology_gallery(path,reference,restored,wallis,persistence,morph_s
         else:
             hi=max(float(np.percentile(np.abs(vals),98.5)) if len(vals) else 1.0,1e-9); lo=-hi; cmap=resolved_cmap(getattr(args,'cmap','gray'),getattr(args,'normal_gray',False))
         disp=_spatial_array(g,args)
-        im=ax.imshow(disp,origin='upper',extent=extent,cmap=cmap,vmin=lo,vmax=hi,interpolation='nearest'); ax.set_title(title,fontsize=10); _format_projected_axes(ax,extent,target_x=4,target_y=4,fontsize=7); fig.colorbar(im,ax=ax,shrink=.72,pad=.02)
+        im=ax.imshow(disp,origin='upper',extent=extent,cmap=cmap,vmin=lo,vmax=hi,interpolation='nearest'); ax.set_title(title,fontsize=10); _format_projected_axes(ax,extent,target_x=4,target_y=4,fontsize=7); _publication_colorbar(fig,ax,im,'Magnetic / relative value',getattr(args,'colorbar_position','right'),fontsize=7)
     fig.suptitle('Archaeological magnetic interpretation suite — measured reference preserved; enhanced branches are aids, not ground truth',fontsize=14)
     fig.savefig(path,dpi=max(220,int(getattr(args,'figure_dpi',220))),bbox_inches='tight'); plt.close(fig)
 
@@ -5089,11 +5216,14 @@ def enhance_main():
             if nod is not None: data[data==nod]=np.nan
             profile=ds.profile.copy(); transform=ds.transform; crs=ds.crs
             cs=float(abs(ds.transform.a)); bounds=ds.bounds
+    source_unit=_raster_magnetic_unit(source)
+    global CURRENT_VALUE_UNITS
+    if source_unit in {'nT','nT/m'}: CURRENT_VALUE_UNITS=source_unit
     _stem=source.stem
     _stem=re.sub(r'_(?:Bz_grid.*|regularized_[0-9p.]+m.*|clean_(?:map|smooth).*|surface_.*)$','',_stem,flags=re.I)
     prefix=grid_site_slug(a.site_name or _stem)
-    root=a.output; tifd=root/'GeoTIFF'; pngd=root/'PNG'; repd=root/'Reports'
-    for d in (tifd,pngd,repd): d.mkdir(parents=True,exist_ok=True)
+    root=a.output; tifd=root/'GeoTIFF'; pngs=_native_png_dirs(root); pngd=pngs['products']; pngcmp=pngs['comparison']; pngqc=pngs['qc']; pngdiag=pngs['diagnostics']; repd=root/'Reports'
+    for d in (tifd,repd): d.mkdir(parents=True,exist_ok=True)
     # Start from the complete grid-parser defaults so all shared plotting/filter
     # helpers receive the same fully specified namespace as a normal grid run.
     ns=grid_build_parser().parse_args([str(source)])
@@ -5126,7 +5256,7 @@ def enhance_main():
         if analysis:
             npng,ntxt=write_noise_diagnostics(root,analysis,prefix,'');
             for p in (npng,ntxt):
-                if p and Path(p).exists(): shutil.move(str(p),str((pngd if str(p).endswith('.png') else repd)/Path(p).name))
+                if p and Path(p).exists(): shutil.move(str(p),str((pngdiag if str(p).endswith('.png') else repd)/Path(p).name))
         params=detect_ploughing(explicit,analysis,ns) if (a.plough_diagnostic or a.plough_filter!='none') else {'active':False,'reason':'disabled'}
         filtered,pl_removed=plough_filter_grid(explicit,ns,params) if (a.plough_filter!='none' and params.get('active')) else (explicit.copy(),np.zeros_like(explicit))
     with stage_progress("Regional background, local noise and SNR"):
@@ -5148,6 +5278,15 @@ def enhance_main():
     ns.display_range=a.display_range; ns.display_min=None; ns.display_max=None
     write_linear_preview(pngd/f'{prefix}_enhanced.png',filtered,extent,ns,'value')
     write_linear_preview(pngd/f'{prefix}_subtle_residual.png',residual,extent,ns,'subtle_residual')
+    try:
+        _native_three_panel_comparison(
+            pngcmp/f'{prefix}_enhance_comparison.png',
+            data, filtered, data-filtered,
+            ('Source','Enhanced','Removed component'),
+            unit_label=(f'Magnetic value ({source_unit})' if source_unit!='magnetic units' else 'Magnetic value'),
+        )
+    except Exception as exc:
+        print(f'Enhance comparison warning: {exc}',file=sys.stderr)
 
     restored,rest_info=restoration_suite(filtered,noise,ns,grid_resolve_cores(a.cores)) if ns.restoration_suite!='off' else ({},{})
     rmetrics=[]
@@ -5169,7 +5308,7 @@ def enhance_main():
     comparison_candidates.update(restored)
     if len(comparison_candidates)>1:
         with stage_progress("Ranking cleaning/filtering candidates"):
-            perf_rows,perf_summary,perf_files=write_filter_performance_report(repd,pngd,prefix,data,comparison_candidates)
+            perf_rows,perf_summary,perf_files=write_filter_performance_report(repd,pngqc,prefix,data,comparison_candidates)
         print(f"Filter recommendation: balanced={perf_summary.get('best_balanced')}; preservation={perf_summary.get('best_preservation')}; strongest safe denoise={perf_summary.get('strongest_safe_denoising')}",flush=True)
 
     if ns.interpretation_suite:
@@ -5179,7 +5318,7 @@ def enhance_main():
         iprods=[('multiscale_persistence',persistence,'Multiscale persistence [0-1]'),('multiscale_signed_persistence',signedp,'Signed persistence [-1,1]'),('morphology_positive',mpos,magnetic_label('Positive morphology')),('morphology_negative',mneg,magnetic_label('Negative morphology')),('morphology_signed',msigned,magnetic_label('Signed morphology')),('horizontal_gradient',edges['horizontal_gradient'],magnetic_label('Horizontal gradient / m')),('vertical_derivative',edges['vertical_derivative'],magnetic_label('Vertical derivative proxy / m')),('tilt_angle',edges['tilt_angle'],'Tilt angle [rad]'),('analytic_signal',edges['analytic_signal'],magnetic_label('Analytic signal / m'))]
         for name,g,label in iprods:
             wt(name,g,label,f'archaeological interpretation aid: {name}'); write_relative_preview(pngd/f'{prefix}_{name}.png',g,extent,name.replace('_',' ').title(),ns,cmap='gray_r' if name=='analytic_signal' else ns.cmap,symmetric=name not in {'multiscale_persistence','horizontal_gradient','analytic_signal'})
-        write_archaeology_gallery(pngd/f'{prefix}_archaeology_gallery.png',filtered,restored,wallis,persistence,msigned,edges,extent,ns)
+        write_archaeology_gallery(pngdiag/f'{prefix}_archaeology_gallery.png',filtered,restored,wallis,persistence,msigned,edges,extent,ns)
         (repd/f'{prefix}_interpretation_suite.json').write_text(json.dumps({'software_version':VERSION,'source':str(source),'requested_input':str(a.input),'persistence_scales_m':psc,'morphology_scales_m':msc,'derivative_source':'restoration consensus' if 'consensus' in restored else 'explicit enhancement source','policy':'interpretation aids only; OBIA remains separate'},indent=2),encoding='utf-8')
 
     report={'software_version':VERSION,'source':str(source),'requested_input':str(a.input),'cell_size_m':cs,'crs':str(crs),'suite':a.suite,'restoration_suite':ns.restoration_suite,'explicit_filters':{'low_pass_m':a.low_pass,'high_pass_m':a.high_pass,'median_filter_m':a.median_filter,'median_high_pass_m':a.median_high_pass,'remove_plane':a.remove_plane},'plough':params,'restoration':rest_info,'policy':'post-grid processing only; source GeoTIFF is never overwritten; OBIA is separate'}
@@ -5406,7 +5545,7 @@ def segment_site_slug(text):
 def outdirs(root,flat):
     root=Path(root); root.mkdir(parents=True,exist_ok=True)
     if flat:return {k:root for k in ('rasters','figures','reports','vectors')}
-    d={'rasters':root/'GeoTIFF','figures':root/'PNG','reports':root/'Reports','vectors':root/'Vectors'}
+    d={'rasters':root/'GeoTIFF','figures':root/'PNG'/'Products','reports':root/'Reports','vectors':root/'Vectors'}
     for x in d.values():x.mkdir(parents=True,exist_ok=True)
     return d
 
@@ -12313,8 +12452,8 @@ def _v123_regularize_points(argv):
     src=_resolve_project_asc(a.input)
     print(f"Resolved point source: {src}",flush=True)
     print(f"CPU budget: {cores} core(s).",flush=True)
-    root=Path(a.output); gd=root/'GeoTIFF'; ad=root/'ASC'; rd=root/'Reports'; pd=root/'PNG'
-    for d in (gd,ad,rd,pd): d.mkdir(parents=True,exist_ok=True)
+    root=Path(a.output); gd=root/'GeoTIFF'; ad=root/'ASC'; rd=root/'Reports'; pd=_native_png_dirs(root)['products']
+    for d in (gd,ad,rd): d.mkdir(parents=True,exist_ok=True)
     prefix=_site_slug_from_source(src,a.site_name)
     # Pass 1: bounds and count without holding the full point cloud in memory.
     xmin=ymin=float('inf'); xmax=ymax=float('-inf'); nrows=0
@@ -12523,8 +12662,8 @@ def _v123_clean_map(argv):
     source=_resolve_project_raster(a.input,a.source_product)
     print(f'Resolved clean-map source: {source}',flush=True)
     cores=configure_runtime_cores(a.cores); print(f'CPU budget: {cores} core(s).',flush=True)
-    root=Path(a.output); gd=root/'GeoTIFF'; rd=root/'Reports'; pd=root/'PNG'
-    for d in (gd,rd,pd): d.mkdir(parents=True,exist_ok=True)
+    root=Path(a.output); gd=root/'GeoTIFF'; rd=root/'Reports'; pd=_native_png_dirs(root)['comparison']
+    for d in (gd,rd): d.mkdir(parents=True,exist_ok=True)
     import rasterio
     with stage_progress('Clean map: reading quantitative source'):
         with rasterio.open(source) as ds:
@@ -12596,7 +12735,7 @@ def _v123_clean_map(argv):
         for ax,(title,g) in zip(axs[0],panels):
             # Each flattened product is centred independently but uses the same robust amplitude span.
             cc=float(np.nanmedian(g[np.isfinite(g)])); last=ax.imshow(g,origin='upper',cmap='gray_r',vmin=cc-lim,vmax=cc+lim); ax.set_title(title); ax.set_axis_off()
-        cb=fig.colorbar(last,ax=list(axs[0]),orientation='horizontal',fraction=.055,pad=.10,aspect=45); cb.set_label('Magnetic value (nT/m) — common robust amplitude span')
+        _publication_shared_colorbar(fig,list(axs[0]),last,'Magnetic value — common robust amplitude span','bottom',fontsize=7.5,tick_fontsize=6.5,thickness=.085,pad=.42)
         fig.suptitle(f'{prefix}: compact clean-map comparison ({a.profile})'); fig.subplots_adjust(left=.02,right=.98,bottom=.18,top=.86,wspace=.05)
         fig.savefig(pd/f'{prefix}_clean_map_comparison.png',dpi=220,bbox_inches='tight'); plt.close(fig)
     except Exception as exc: print(f'Clean-map preview warning: {exc}',file=sys.stderr)
@@ -12762,7 +12901,7 @@ Compact outputs
   GeoTIFF/*_clean_map.tif
   GeoTIFF/*_clean_smooth.tif (unless --one-product)
   GeoTIFF/*_clean_removed_total.tif
-  PNG/*_clean_map_comparison.png
+  PNG/Comparison/*_clean_map_comparison.png
   Reports/*_clean_map_report.json
 
 Scientific status
@@ -13329,8 +13468,8 @@ The input is never overwritten. Use the quantitative/cleaned raster for measurem
     valid=np.isfinite(ref)
     if valid.sum()<16: raise SystemExit('Too few valid cells for presentation processing.')
     cs=float(abs(transform.a)); prefix=_site_slug_from_source(source,a.site_name)
-    root=Path(a.output); gd=root/'GeoTIFF'; pd=root/'PNG'; rd=root/'Reports'
-    for d in (gd,pd,rd): d.mkdir(parents=True,exist_ok=True)
+    root=Path(a.output); gd=root/'GeoTIFF'; pd=_native_png_dirs(root)['products']; rd=root/'Reports'
+    for d in (gd,rd): d.mkdir(parents=True,exist_ok=True)
 
     bgargs=argparse.Namespace(regional_method='robust-gaussian',subtle_background_scale=float(a.background_scale),cell_size=cs,regional_iterations=4,regional_tuning=2.7)
     with stage_progress(f'Presentation: robust regional decomposition ({a.background_scale:g} m)'):
@@ -13458,7 +13597,7 @@ Recommended archaeological uses:
 Every option changes a derived product only; the input raster is never overwritten.''')
     p.add_argument('input',nargs='?',type=Path,help='Input quantitative raster or project/stage folder.')
     p.add_argument('--input',dest='input_option',type=Path,default=None,help='Explicit alternative to the positional input path. Both forms use the same raster-filter engine.')
-    p.add_argument('-o','--output',type=Path,required=True); p.add_argument('--site-name',default=None); p.add_argument('--source-product',default='Bz_grid')
+    p.add_argument('-o','--output',type=Path,default=None,help='Output directory. In project mode this defaults to Results/FILTER_RASTER.'); p.add_argument('--site-name',default=None); p.add_argument('--source-product',default='Bz_grid')
     p.add_argument('--low-pass',type=float,default=0.0,metavar='METRES',help='Gaussian smoothing sigma in metres. 0 off. Typical dense archaeology 0.10-0.50 m. Larger removes more fine detail.')
     p.add_argument('--high-pass',type=float,default=0.0,metavar='METRES',help='Subtract a Gaussian background with this sigma. 0 off. Typical local archaeology 2-10 m. Smaller removes increasingly broad archaeological signal.')
     p.add_argument('--median-low-pass',type=float,default=0.0,metavar='METRES',help='Median window width in metres. 0 off. Useful for spikes/ferrous speckle, but can reshape compact anomalies.')
@@ -13483,9 +13622,12 @@ Every option changes a derived product only; the input raster is never overwritt
     a.input=a.input_option if a.input_option is not None else a.input
     if a.input is None:
         raise SystemExit('A raster source is required. Provide INPUT or --input INPUT.')
+    if a.output is None:
+        raise SystemExit('An output directory is required outside project mode. Add -o OUTPUT, or use --project PROJECT for automatic Results/FILTER_RASTER routing.')
     source,ref,transform,crs,profile=_archaeomag_read_raster(a.input,a.source_product); configure_runtime_cores(a.cores)
+    source_unit=_raster_magnetic_unit(source)
     valid=np.isfinite(ref); cs=float(abs(transform.a)); prefix=_site_slug_from_source(source,a.site_name)
-    root=Path(a.output); gd=root/'GeoTIFF'; pd=root/'PNG'; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (gd,pd,rd)]
+    root=Path(a.output); gd=root/'GeoTIFF'; pd=_native_png_dirs(root)['comparison']; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (gd,rd)]
     out=ref.copy(); steps=[]
     def save_step(label,data):
         steps.append(label)
@@ -13526,12 +13668,7 @@ Every option changes a derived product only; the input raster is never overwritt
     final=gd/f'{prefix}_filtered.tif'; remp=gd/f'{prefix}_filter_removed_total.tif'
     tags={'author':AUTHOR,'website':WEBSITE,'software':APP_NAME,'version':APP_VERSION,'source':str(source),'product':'explicit manual magnetic filter stack','steps':','.join(steps),'warning':'Derived filtered product. Inspect removed component before archaeological interpretation.'}
     _archaeomag_write_like(final,out,transform,crs,tags,magnetic_label('Filtered magnetic field')); _archaeomag_write_like(remp,removed,transform,crs,{**tags,'product':'total component removed by manual filter stack'},magnetic_label('Filter removed component'))
-    vals=ref[valid]; med=float(np.nanmedian(vals)); lim=max(float(np.nanpercentile(np.abs(vals-med),98)),1e-9)
-    fig,axs=plt.subplots(1,3,figsize=(13,5),constrained_layout=True)
-    for ax,dat,title in zip(axs,[ref,out,removed],['Source','Filtered','Removed component']):
-        im=ax.imshow(dat,origin='upper',cmap='gray_r',vmin=med-lim if title!='Removed component' else -lim,vmax=med+lim if title!='Removed component' else lim); ax.set_title(title); ax.set_axis_off()
-    cb=fig.colorbar(im,ax=list(axs),orientation='horizontal',fraction=.055,pad=.06,aspect=40); cb.set_label('Magnetic value (nT/m)')
-    fig.savefig(pd/f'{prefix}_filter_comparison.png',dpi=220,bbox_inches='tight'); plt.close(fig)
+    _native_three_panel_comparison(pd/f'{prefix}_filter_comparison.png',ref,out,removed,('Source','Filtered','Removed component'),unit_label=(f'Magnetic value ({source_unit})' if source_unit!='magnetic units' else 'Magnetic value'))
     rep={'software_version':APP_VERSION,'source':str(source),'cell_size_m':cs,'steps':steps,'parameters':vars(a),'stripe_info':stripe_info,'metrics_vs_source':restoration_metrics(ref,out),'products':{'filtered':str(final),'removed':str(remp)},'scientific_status':'DERIVED FILTERED PRODUCT; input source unchanged.'}
     (rd/f'{prefix}_filter_report.json').write_text(json.dumps(rep,indent=2,default=str),encoding='utf-8')
     print(f'Filtered raster: {final}\nRemoved-component audit: {remp}\nOriginal source was not overwritten.',flush=True); return 0
@@ -14573,7 +14710,7 @@ Scalar total-field profiles are named by their processing behavior. `high-resolu
             aq['TRAVERSE_ZERO_CORRECTION']=0.0; metas[i]['traverse_zero']={'mode':'off','applied':False}
         assembled_arch.append(aq)
     allp=pd.concat(assembled,ignore_index=True); allarch=pd.concat(assembled_arch,ignore_index=True); prefix=grid_site_slug(a.site_name)
-    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=root/'PNG'; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,pdout,rd)]
+    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=_native_png_dirs(root)['comparison']; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,rd)]
     if layout_info is not None:
         _tf_write_layout_products(layout_info,rd/f'{prefix}_inferred_grid_layout.csv',rd/f'{prefix}_grid_layout_candidates.json',pdout/f'{prefix}_inferred_grid_layout.png',title=f'{prefix} inferred grid layout')
         if layout_info['confidence'] < float(a.layout_confidence):
@@ -14629,7 +14766,8 @@ Scalar total-field profiles are named by their processing behavior. `high-resolu
     refmed=float(np.nanmedian(raster_ref)); reflim=max(float(np.nanpercentile(np.abs(raster_ref-refmed),98)),1e-9)
     workmed=float(np.nanmedian(raster_work)); worklim=max(float(np.nanpercentile(np.abs(raster_work-workmed),98)),1e-9)
     pmed=float(np.nanmedian(processed)); plim=max(float(np.nanpercentile(np.abs(processed-pmed),98)),1e-9)
-    fig,axs=plt.subplots(1,3,figsize=(15,5),constrained_layout=True)
+    fig,axs=plt.subplots(1,3,figsize=(17.2,5.1),constrained_layout=False)
+    fig.subplots_adjust(left=.025,right=.985,bottom=.18,top=.91,wspace=.13)
     ims=[]
     for ax,dat,title,med,lim in zip(axs,[raster_ref,raster_work,processed],['Corrected reference','Destriped candidate','Archaeology branch'],[refmed,workmed,pmed],[reflim,worklim,plim]):
         im=ax.imshow(dat,origin='upper',cmap='gray_r',vmin=med-lim,vmax=med+lim); ims.append(im); ax.set_title(title); ax.set_axis_off()
@@ -14705,7 +14843,7 @@ def _bartington_fluxgate(argv):
     else:
         for q in assembled_work: q['GRID_LEVEL_CORRECTION']=0.0
     allref=pd.concat(assembled_ref,ignore_index=True); allp=pd.concat(assembled_work,ignore_index=True); prefix=grid_site_slug(a.site_name)
-    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=root/'PNG'; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,pdout,rd)]
+    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=_native_png_dirs(root)['comparison']; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,rd)]
     csvp=cd/f'{prefix}_fluxgate_points.csv'; allp.to_csv(csvp,index=False)
     refasc=ad/f'{prefix}_fluxgate_reference.asc'; procasc=ad/f'{prefix}_fluxgate_processed.asc'
     with refasc.open('w',encoding='utf-8') as fh:
@@ -15159,8 +15297,8 @@ Examples:
     if a.kriging_neighbors<2 or a.kriging_range<=0 or a.kriging_nugget<0: raise SystemExit('Invalid kriging settings')
 
     a.output.mkdir(parents=True,exist_ok=True)
-    gd=a.output/'GeoTIFF'; pd=a.output/'PNG'; rd=a.output/'Reports'
-    for d in (gd,pd,rd): d.mkdir(parents=True,exist_ok=True)
+    gd=a.output/'GeoTIFF'; pd=_native_png_dirs(a.output)['qc']; rd=a.output/'Reports'
+    for d in (gd,rd): d.mkdir(parents=True,exist_ok=True)
     t0=time.perf_counter()
 
     inp=Path(a.input)
@@ -15467,15 +15605,17 @@ Examples:
 
     qcp=pd/f'{prefix}_interpolation_QC.png'
     show_center=float(np.nanmedian(values)); lim=max(float(np.nanpercentile(np.abs(values-show_center),98.5)),max(sigma*4,1e-9))
-    fig,axs=plt.subplots(1,3,figsize=(15.5,5.2),constrained_layout=True)
+    fig,axs=plt.subplots(1,3,figsize=(15.8,5.55),constrained_layout=False)
+    fig.subplots_adjust(left=.055,right=.985,bottom=.25,top=.91,wspace=.18)
     im0=axs[0].imshow(measured,origin='upper',cmap='gray_r',vmin=show_center-lim,vmax=show_center+lim); axs[0].set_title(f'Measured-cell medians ({cs:g} m)')
     im1=axs[1].imshow(out,origin='upper',cmap='gray_r',vmin=show_center-lim,vmax=show_center+lim); axs[1].set_title(f'One site-wide {"linear TIN" if method=="archaeology" else method}')
     im2=axs[2].imshow(support,origin='upper',cmap='viridis'); axs[2].set_title('Distance to measured support [m]')
     for ax in axs: ax.set_xlabel('Easting cells'); ax.set_ylabel('Northing cells')
-    fig.colorbar(im0,ax=axs[0],orientation='horizontal',fraction=.05,pad=.08,label='magnetic units')
-    fig.colorbar(im1,ax=axs[1],orientation='horizontal',fraction=.05,pad=.08,label='magnetic units')
-    fig.colorbar(im2,ax=axs[2],orientation='horizontal',fraction=.05,pad=.08,label='m')
-    fig.savefig(qcp,dpi=210,bbox_inches='tight'); plt.close(fig)
+    # Measured nodes and the interpolated surface use the same quantitative
+    # range, so one shared bar is clearer and avoids duplicated long total-field labels.
+    _publication_shared_colorbar(fig,axs[:2],im0,'magnetic units','bottom',fontsize=7.5,tick_fontsize=6.5,thickness=.085,pad=.58)
+    _publication_colorbar(fig,axs[2],im2,'m','bottom',fontsize=7.5,tick_fontsize=6.5,thickness=.085,pad=.58)
+    fig.savefig(qcp,dpi=210,bbox_inches='tight',pad_inches=.05); plt.close(fig)
 
     support_vals=support[footprint]
     report={
@@ -15695,11 +15835,32 @@ def _argv_promote_input_alias(argv):
     return [*inputs,*clean],inputs
 
 
+def _coalesce_project_name(namespace, parser=None):
+    """Resolve canonical ``--project`` with the historical positional name as an alias.
+
+    New documentation uses ``--project NAME`` consistently across MagSurveyPy.
+    Positional project names remain accepted so existing scripts keep working.
+    """
+    positional=getattr(namespace,'name',None)
+    option=getattr(namespace,'project_option',None)
+    if positional and option and str(positional)!=str(option):
+        msg=f'Project was supplied twice with different values: {positional!r} and {option!r}.'
+        if parser is not None: parser.error(msg)
+        raise SystemExit(msg)
+    name=option or positional
+    if not name:
+        msg='A project name is required. Use --project PROJECT.'
+        if parser is not None: parser.error(msg)
+        raise SystemExit(msg)
+    namespace.name=str(name)
+    return namespace.name
+
+
 def _ensure_project(project,workspace=None):
-    if not project: raise SystemExit('A project name is required.')
+    if not project: raise SystemExit('A project name is required. Use --project PROJECT.')
     pp=_project_paths(project,workspace)
     if not pp['meta'].exists():
-        raise SystemExit(f"Project '{project}' does not exist in {_workspace_root(workspace)}. Create it first with `mspy project init {project}`.")
+        raise SystemExit(f"Project '{project}' does not exist in {_workspace_root(workspace)}. Create it first with `mspy project init --project {project}`.")
     return pp
 
 
@@ -15830,7 +15991,7 @@ New projects use scientific acquisition-class names only. Original measurements 
 
 
 _GROUP_TOP_HELP=r"""
-MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.0
+MagSurveyPy Archaeological Magnetometry Prospection Suite — Version 1.0.1
 =======================================================================
 Developed by Alexandru Hegyi, PhD
 Website: https://alexandruhegyi.com
@@ -15876,15 +16037,15 @@ PUBLIC COMMAND GROUPS
 
 PROJECT CREATION
 ----------------
-  mspy project init Site --category multichannel
-  mspy project init Site --category total-field
-  mspy project init Site --category fluxgate
-  mspy project init Site --category mixed
+  mspy project init --project Site --category multichannel
+  mspy project init --project Site --category total-field
+  mspy project init --project Site --category fluxgate
+  mspy project init --project Site --category mixed
 
 Import matching field data with:
-  mspy project import Site /path/to/data --type multichannel
-  mspy project import Site /path/to/data --type total-field
-  mspy project import Site /path/to/data --type fluxgate
+  mspy project import --project Site --input /path/to/data --type multichannel
+  mspy project import --project Site --input /path/to/data --type total-field
+  mspy project import --project Site --input /path/to/data --type fluxgate
 
 CORE SURVEY COMMANDS
 --------------------
@@ -15943,26 +16104,29 @@ def _project_command(argv):
         print('''PROJECT — create and manage MagSurveyPy survey projects
 
 Create a project by scientific acquisition category:
-  mspy project init Site --category multichannel
-  mspy project init Site --category total-field
-  mspy project init Site --category fluxgate
-  mspy project init Site --category mixed
+  mspy project init --project Site --category multichannel
+  mspy project init --project Site --category total-field
+  mspy project init --project Site --category fluxgate
+  mspy project init --project Site --category mixed
 
 Import original measurements:
-  mspy project import Site /path/to/data --type multichannel
-  mspy project import Site /path/to/data --type total-field
-  mspy project import Site /path/to/data --type fluxgate
+  mspy project import --project Site --input /path/to/data --type multichannel
+  mspy project import --project Site --input /path/to/data --type total-field
+  mspy project import --project Site --input /path/to/data --type fluxgate
 
 Commands:
-  init NAME              Create the full project directory tree.
-  import NAME SOURCE...  Copy or link original field data into RawData/.
-  config NAME            Show/change routine cell-size, fill, statistic and cores.
-  list                   List projects.
-  status NAME            Show raw-data counts, layout and result stages.
-  tree NAME              Print the project tree.
-  path NAME              Print the absolute project path.
-  georeference NAME ...  Assign GPS control points to an unreferenced raster.
-  history NAME           Show recent project commands from Logs/.
+  init --project NAME              Create the full project directory tree.
+  import --project NAME --input P  Copy/link original field data into RawData/.
+  config --project NAME            Show/change routine cell-size, fill, statistic and cores.
+  list                             List projects.
+  status --project NAME            Show raw-data counts, layout and result stages.
+  tree --project NAME              Print the project tree.
+  path --project NAME              Print the absolute project path.
+  georeference --project NAME ...  Assign GPS control points to an unreferenced raster.
+  history --project NAME           Show recent project commands from Logs/.
+
+The historical positional spelling (for example `mspy project status Site`) remains
+available as a compatibility alias, but `--project` is the canonical public form.
 
 New project RawData folders are Multichannel, TotalField, Fluxgate, Generic,
 GNSS and BaseStation. `--category` records the intended survey class but does not
@@ -15975,20 +16139,21 @@ Use --workspace PATH or MAGSURVEYPY_WORKSPACE to change it.'''); return 0
         p=argparse.ArgumentParser(prog='mspy project init',formatter_class=argparse.RawDescriptionHelpFormatter,
             description='Create a self-contained MagSurveyPy project using acquisition-class folder names.',
             epilog='''Examples:
-  mspy project init Rupea --category multichannel
-  mspy project init Foeni --category total-field
-  mspy project init GridSite --category fluxgate
-  mspy project init MixedSite --category mixed --crs EPSG:32634
+  mspy project init --project Rupea --category multichannel
+  mspy project init --project Foeni --category total-field
+  mspy project init --project GridSite --category fluxgate
+  mspy project init --project MixedSite --category mixed --crs EPSG:32634
 
 Created RawData folders:
   Multichannel/  TotalField/  Fluxgate/  Generic/  GNSS/  BaseStation/
 
 The category is descriptive metadata; it does not lock the project to one data class.''')
-        p.add_argument('name')
+        p.add_argument('name',nargs='?',help=argparse.SUPPRESS)
+        p.add_argument('--project',dest='project_option',default=None,help='Project name. Canonical public form; the old positional name remains accepted.')
         p.add_argument('--category',choices=('multichannel','total-field','fluxgate','generic','mixed'),default=None,help='Primary survey category. Default: mixed.')
         p.add_argument('--instrument',dest='legacy_instrument',default=None,help=argparse.SUPPRESS)
         p.add_argument('--crs',default='auto'); p.add_argument('--notes',default=''); p.add_argument('--workspace',type=Path,default=None)
-        a=p.parse_args(argv)
+        a=p.parse_args(argv); _coalesce_project_name(a,p)
         legacy={'prm':'multichannel','bartington':'fluxgate','total-field':'total-field','generic':'generic','mixed':'mixed'}
         if a.category and a.legacy_instrument: raise SystemExit('Use --category for new projects; do not combine it with the legacy --instrument option.')
         category=a.category or legacy.get(str(a.legacy_instrument).lower(),'mixed')
@@ -16023,13 +16188,19 @@ For split-sensor total-field data, optional gradient products can be requested w
         p=argparse.ArgumentParser(prog='mspy project import',formatter_class=argparse.RawDescriptionHelpFormatter,
             description='Copy or link original field data into the acquisition-class RawData folder. Sources are not modified.',
             epilog='''Examples:
-  mspy project import Site ./survey_export --type multichannel
-  mspy project import Site ./total_field_dat --type total-field
-  mspy project import Site ./fluxgate_grids --type fluxgate''')
-        p.add_argument('name'); p.add_argument('source',nargs='+',type=Path)
+  mspy project import --project Site --input ./survey_export --type multichannel
+  mspy project import --project Site --input ./total_field_dat --type total-field
+  mspy project import --project Site --input ./fluxgate_grids --type fluxgate
+
+Compatibility: positional `Site SOURCE...` is still accepted.''')
+        p.add_argument('name',nargs='?',help=argparse.SUPPRESS); p.add_argument('source',nargs='*',type=Path,help=argparse.SUPPRESS)
+        p.add_argument('--project',dest='project_option',default=None,help='Project name (canonical public form).')
+        p.add_argument('--input',dest='input_option',action='append',type=Path,default=None,metavar='PATH',help='Source file or directory. Repeat for multiple sources. Positional sources remain accepted.')
         p.add_argument('--type',required=True,metavar='TYPE',help='multichannel | total-field | fluxgate | generic | gnss | base-station')
         p.add_argument('--mode',choices=('copy','link'),default='copy'); p.add_argument('--replace',action='store_true'); p.add_argument('--workspace',type=Path,default=None)
-        a=p.parse_args(argv); pp=_ensure_project(a.name,a.workspace)
+        a=p.parse_args(argv); _coalesce_project_name(a,p); a.source=[*(a.input_option or []),*list(a.source or [])]
+        if not a.source: p.error('At least one source is required. Use --input PATH.')
+        pp=_ensure_project(a.name,a.workspace)
         aliases={'multichannel':'multichannel','prm':'multichannel','total-field':'total-field','totalfield':'total-field','fluxgate':'fluxgate','bartington':'fluxgate','generic':'generic','gnss':'gnss','base-station':'base-station'}
         typ=aliases.get(str(a.type).lower())
         if typ is None: raise SystemExit('--type must be multichannel, total-field, fluxgate, generic, gnss or base-station.')
@@ -16064,12 +16235,13 @@ For split-sensor total-field data, optional gradient products can be requested w
         return 0
     if sub=='georeference':
         p=argparse.ArgumentParser(prog='mspy project georeference',description='Georeference an unreferenced project raster from 3 or more image/target control points. The fitted affine transform is written without resampling magnetic values; a GCP CSV and JSON QC recipe are stored beside the result.')
-        p.add_argument('name',help='Project name.'); p.add_argument('input',nargs='?',type=Path,help='Source TIFF. May be an unreferenced local-grid raster.')
+        p.add_argument('name',nargs='?',help=argparse.SUPPRESS); p.add_argument('input',nargs='?',type=Path,help=argparse.SUPPRESS)
+        p.add_argument('--project',dest='project_option',default=None,help='Project name (canonical public form).')
         p.add_argument('--input',dest='input_option',type=Path,default=None,help='Explicit alternative to the positional source TIFF.')
         p.add_argument('--gcps',type=Path,required=True,help='CSV with col,row,x,y (aliases pixel_x/pixel_y and easting/northing or lon/lat are accepted).')
         p.add_argument('--crs',required=True,help='CRS of the entered target coordinates, e.g. EPSG:32634 or EPSG:4326.')
         p.add_argument('-o','--output',type=Path,default=None,help='Output GeoTIFF. Default: Project/Results/GEOREFERENCED/<source>_georeferenced.tif'); p.add_argument('--workspace',type=Path,default=None)
-        a=p.parse_args(argv)
+        a=p.parse_args(argv); _coalesce_project_name(a,p)
         if a.input is not None and a.input_option is not None: raise SystemExit('Provide the source TIFF either positionally or with --input, not both.')
         a.input=a.input_option if a.input_option is not None else a.input
         if a.input is None: raise SystemExit('A source TIFF is required. Provide INPUT or --input INPUT.')
@@ -16090,8 +16262,8 @@ For split-sensor total-field data, optional gradient products can be requested w
         print(f'GCP/QC CSV: {result["gcp_csv"]}'); print(f'Georeferencing recipe: {result["recipe"]}'); print('Magnetic raster values resampled: NO'); return 0
     if sub=='history':
         p=argparse.ArgumentParser(prog='mspy project history',description='Show recent commands recorded for one project. Commands are also stored as plain text under Project/Logs/.')
-        p.add_argument('name'); p.add_argument('--category',default='commands'); p.add_argument('--tail',type=int,default=30); p.add_argument('--workspace',type=Path,default=None)
-        a=p.parse_args(argv); pp=_ensure_project(a.name,a.workspace); pp['logs'].mkdir(parents=True,exist_ok=True)
+        p.add_argument('name',nargs='?',help=argparse.SUPPRESS); p.add_argument('--project',dest='project_option',default=None,help='Project name (canonical public form).'); p.add_argument('--category',default='commands'); p.add_argument('--tail',type=int,default=30); p.add_argument('--workspace',type=Path,default=None)
+        a=p.parse_args(argv); _coalesce_project_name(a,p); pp=_ensure_project(a.name,a.workspace); pp['logs'].mkdir(parents=True,exist_ok=True)
         q=pp['logs']/('commands.log' if str(a.category).lower() in {'all','commands','master'} else f'{_safe_project_name(a.category).lower()}.log')
         if not q.exists(): print(f'No command log yet: {q}'); return 0
         lines=q.read_text(encoding='utf-8',errors='replace').splitlines(); n=max(1,int(a.tail))
@@ -16099,8 +16271,8 @@ For split-sensor total-field data, optional gradient products can be requested w
         return 0
     if sub=='config':
         p=argparse.ArgumentParser(prog='mspy project config',description='Show or update routine project defaults. Explicit processing options override project defaults.')
-        p.add_argument('name'); p.add_argument('--cell-size',type=float); p.add_argument('--fill-distance',type=float); p.add_argument('--statistic',choices=('median','mean')); p.add_argument('--cores',type=int); p.add_argument('--workspace',type=Path,default=None)
-        a=p.parse_args(argv); pp=_ensure_project(a.name,a.workspace); f=pp['config']/'processing_defaults.json'; d=_load_project_defaults(pp); changed=False
+        p.add_argument('name',nargs='?',help=argparse.SUPPRESS); p.add_argument('--project',dest='project_option',default=None,help='Project name (canonical public form).'); p.add_argument('--cell-size',type=float); p.add_argument('--fill-distance',type=float); p.add_argument('--statistic',choices=('median','mean')); p.add_argument('--cores',type=int); p.add_argument('--workspace',type=Path,default=None)
+        a=p.parse_args(argv); _coalesce_project_name(a,p); pp=_ensure_project(a.name,a.workspace); f=pp['config']/'processing_defaults.json'; d=_load_project_defaults(pp); changed=False
         for k,v in [('cell_size_m',a.cell_size),('fill_distance_m',a.fill_distance),('statistic',a.statistic),('cores',a.cores)]:
             if v is not None: d[k]=v; changed=True
         if changed: f.write_text(json.dumps(d,indent=2),encoding='utf-8'); print(f'Updated: {f}')
@@ -16113,7 +16285,7 @@ For split-sensor total-field data, optional gradient products can be requested w
             print(f'{pr.name:24s} '+('layout  ' if (pr/'Layouts'/'grid_layout.csv').exists() else 'no-layout ') + (', '.join(stages) if stages else '(no results)'))
         return 0
     if sub in {'status','tree','path'}:
-        p=argparse.ArgumentParser(prog=f'mspy project {sub}'); p.add_argument('name'); p.add_argument('--workspace',type=Path,default=None); a=p.parse_args(argv); pp=_ensure_project(a.name,a.workspace)
+        p=argparse.ArgumentParser(prog=f'mspy project {sub}'); p.add_argument('name',nargs='?',help=argparse.SUPPRESS); p.add_argument('--project',dest='project_option',default=None,help='Project name (canonical public form).'); p.add_argument('--workspace',type=Path,default=None); a=p.parse_args(argv); _coalesce_project_name(a,p); pp=_ensure_project(a.name,a.workspace)
         if sub=='path': print(pp['root']); return 0
         if sub=='tree':
             print(pp['root'])
@@ -16431,7 +16603,7 @@ def _gradient_grid(argv, orientation='vertical'):
     else:
         for q in aw: q['GRID_LEVEL_CORRECTION']=0.0
     allref=pd.concat(ar,ignore_index=True); allp=pd.concat(aw,ignore_index=True); prefix=grid_site_slug(a.site_name)
-    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=root/'PNG'; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,pdout,rd)]
+    root=Path(a.output); ad=root/'ASC'; cd=root/'CSV'; gd=root/'GeoTIFF'; pdout=_native_png_dirs(root)['comparison']; rd=root/'Reports'; [d.mkdir(parents=True,exist_ok=True) for d in (ad,cd,gd,rd)]
     csvp=cd/f'{prefix}_{slug}_points.csv'; allp.to_csv(csvp,index=False)
     refasc=ad/f'{prefix}_{slug}_reference.asc'; procasc=ad/f'{prefix}_{slug}_processed.asc'
     with refasc.open('w',encoding='utf-8') as fh:
@@ -17554,7 +17726,7 @@ def _export_group(argv):
     if sub=='bundle': return _export_bundle_cli(argv)
     if sub in {'figure','compare'}:
         repl='figure single' if sub=='figure' else 'figure compare'
-        raise SystemExit(f'`export {sub}` was removed from the public 1.0.0 CLI. Use `{repl}`.')
+        raise SystemExit(f'`export {sub}` is not part of the current public CLI. Use `{repl}`.')
     raise SystemExit(f'Unknown export command: {sub}. Current commands: map, reproject, contours, bundle.')
 
 # =============================================================================
@@ -17915,7 +18087,7 @@ def _web_make_handler(pp):
             'WIDTH':str(int(shape[1])),'HEIGHT':str(int(shape[0]))
         })
         p=urlsplit(url); full=urlunsplit((p.scheme,p.netloc,p.path,urlencode(params),p.fragment))
-        req=Request(full,headers={'User-Agent':'MagSurveyPy/1.0.0'})
+        req=Request(full,headers={'User-Agent':'MagSurveyPy/1.0.1'})
         with urlopen(req,timeout=30) as r:
             raw=r.read()
         im=Image.open(io.BytesIO(raw)).convert('RGBA').resize((shape[1],shape[0]))
@@ -18040,7 +18212,7 @@ def _web_make_handler(pp):
         out=map_dir/f'{_safe_project_name(pp["root"].name)}_webgis_map_{time.strftime("%Y%m%d_%H%M%S")}.{fmt}'; fig.savefig(out,dpi=dpi,bbox_inches='tight',pad_inches=.06); plt.close(fig); return out
 
     class Handler(BaseHTTPRequestHandler):
-        server_version='MagSurveyPyMiniGIS/1.0.0'
+        server_version='MagSurveyPyMiniGIS/1.0.1'
         def log_message(self,format,*args):
             if getattr(self.server,'quiet',False): return
             super().log_message(format,*args)
@@ -18233,7 +18405,7 @@ def _process_group(argv):
     sub=argv.pop(0); argv,increment=_argv_pop_flag(argv,'--increment','--new-output'); argv,_input_aliases=_argv_promote_input_alias(argv); mp={'interpolate':'interpolate-site','clean':'clean-map','enhance':'enhance','segment':'segment','thin':'thin'}
     if sub not in mp: raise SystemExit(f'Unknown process command: {sub}. Current commands: interpolate, clean, enhance, segment, thin.')
     if argv and argv[0] in {'-h','--help'}:
-        print('PROJECT OPTIONS: --project NAME chooses the project; --from STAGE chooses PROJECT/Results/STAGE. If --from is omitted, a recommended source stage is selected. Add --increment (alias --new-output) to preserve the existing stage and create a numbered stage such as INTERPOLATED_1.\n')
+        print('PROJECT OPTIONS: --project NAME chooses the project; --from STAGE chooses PROJECT/Results/STAGE. An explicit external source can be supplied with --input PATH where the command accepts an input. If --from is omitted, a recommended source stage is selected. Add --increment (alias --new-output) to preserve the existing stage and create a numbered stage such as INTERPOLATED_1.\n')
         return _print_grouped_engine_help(mp[sub],f'process {sub}')
     project=_argv_value(argv,'--project'); workspace=_argv_value(argv,'--workspace')
     if not project: raise SystemExit('Process commands are project-based. Add --project PROJECT.')
@@ -18525,26 +18697,26 @@ def _tools_group(argv):
 
 _HELP_EXAMPLES={
     ('project',None): [
-        'mspy project init Rupea --category multichannel',
-        'mspy project status Rupea',
+        'mspy project init --project Rupea --category multichannel',
+        'mspy project status --project Rupea',
     ],
     ('project','init'): [
-        'mspy project init Rupea --category multichannel',
-        'mspy project init Foeni --category total-field --crs EPSG:32634',
-        'mspy project init GridSite --category fluxgate',
+        'mspy project init --project Rupea --category multichannel',
+        'mspy project init --project Foeni --category total-field --crs EPSG:32634',
+        'mspy project init --project GridSite --category fluxgate',
     ],
     ('project','import'): [
-        'mspy project import Rupea ./survey_export --type multichannel',
-        'mspy project import Foeni ./dat_files --type total-field',
-        'mspy project import GridSite ./grid_files --type fluxgate',
+        'mspy project import --project Rupea --input ./survey_export --type multichannel',
+        'mspy project import --project Foeni --input ./dat_files --type total-field',
+        'mspy project import --project GridSite --input ./grid_files --type fluxgate',
     ],
-    ('project','config'): ['mspy project config Rupea --cell-size 0.25 --fill-distance 0.50 --statistic median'],
+    ('project','config'): ['mspy project config --project Rupea --cell-size 0.25 --fill-distance 0.50 --statistic median'],
     ('project','list'): ['mspy project list'],
-    ('project','status'): ['mspy project status Rupea'],
-    ('project','tree'): ['mspy project tree Rupea'],
-    ('project','path'): ['mspy project path Rupea'],
-    ('project','georeference'): ['mspy project georeference Rupea map.tif --gcps gcps.csv --crs EPSG:32634'],
-    ('project','history'): ['mspy project history Rupea --category process --tail 20'],
+    ('project','status'): ['mspy project status --project Rupea'],
+    ('project','tree'): ['mspy project tree --project Rupea'],
+    ('project','path'): ['mspy project path --project Rupea'],
+    ('project','georeference'): ['mspy project georeference --project Rupea --input map.tif --gcps gcps.csv --crs EPSG:32634'],
+    ('project','history'): ['mspy project history --project Rupea --category process --tail 20'],
     ('survey',None): [
         'mspy survey multichannel --project Rupea --format auto --workflow standard',
         'mspy survey grid --project Foeni --protocol total-field --workflow preservation',
@@ -18692,10 +18864,10 @@ _GUIDE_TOPICS['web-gis']='''MAGSURVEYPY WEB GIS
 
 Launch with `mspy web --project Site`. The responsive Web GIS starts with principal MULTICHANNEL/GEOREFERENCED/TOTAL_FIELD/FLUXGATE/INTERPOLATED/CLEAN/ENHANCED products. The Layers workspace supports project/local imports, grouping, visibility, ordering and a right-click context menu. The Georef workspace accepts unreferenced magnetic TIFFs: click 3 or more image control points, enter their GPS/map coordinates and CRS, inspect affine-fit residuals, then write a quantitative GeoTIFF under Results/GEOREFERENCED without resampling its magnetic values. Raster properties include manual range, standard-deviation stretch, independent cumulative tail cuts, colour scale, opacity, blend mode, brightness, contrast, gamma and saturation. Analysis includes a multi-vertex unit-aware magnetic profile with docked graph, statistics and CSV export. The Draw workspace uses Leaflet-Geoman one-shot point/line/polygon creation and per-feature editing. Export renders the current extent, visible raster/vector styles and drawings to Project/Exports/WebGIS/Maps with publication north arrow, scale bar, coordinate/distance grid and a thin unit-aware magnetic-value legend selectable on the right or bottom. Styling never rewrites Results values.'''
 _GUIDE_TOPICS['georeferencing']='''RASTER GEOREFERENCING
-Use the Web GIS Georef workspace for local/unreferenced survey TIFFs. Select the raster, specify the CRS of the GPS/map coordinates (for example EPSG:4326 or EPSG:32634), zoom/pan the image, click at least 3 non-collinear image points at continuous sub-pixel precision (no snapping), and enter their target X/Y values. Four to eight points distributed around the survey are preferred. MagSurveyPy fits one least-squares affine transform from all points and reports per-point residuals, RMSE and maximum residual before writing. The output and reproducibility files are stored in Results/GEOREFERENCED. Magnetic raster values are copied unchanged; later CRS warping is explicit through `export reproject`. CLI equivalent: `project georeference PROJECT INPUT.tif --gcps points.csv --crs EPSG:32634`. See docs/GEOREFERENCING_GUIDE.md.'''
+Use the Web GIS Georef workspace for local/unreferenced survey TIFFs. Select the raster, specify the CRS of the GPS/map coordinates (for example EPSG:4326 or EPSG:32634), zoom/pan the image, click at least 3 non-collinear image points at continuous sub-pixel precision (no snapping), and enter their target X/Y values. Four to eight points distributed around the survey are preferred. MagSurveyPy fits one least-squares affine transform from all points and reports per-point residuals, RMSE and maximum residual before writing. The output and reproducibility files are stored in Results/GEOREFERENCED. Magnetic raster values are copied unchanged; later CRS warping is explicit through `export reproject`. CLI equivalent: `mspy project georeference --project PROJECT --input INPUT.tif --gcps points.csv --crs EPSG:32634`. See docs/GEOREFERENCING_GUIDE.md.'''
 
 _GUIDE_TOPICS['command-history']='''COMMAND HISTORY AND NON-DESTRUCTIVE OUTPUT VERSIONING
-Every project automatically maintains Logs/commands.log plus category logs such as survey.log, layout.log, process.log, filter.log, analyze.log, figure.log and export.log. Each line contains a local timestamp and the exact reusable `mspy ...` command. `command_status.tsv` records completion status and duration. Use `mspy project history PROJECT --category layout --tail 20` to inspect recent commands in the terminal.
+Every project automatically maintains Logs/commands.log plus category logs such as survey.log, layout.log, process.log, filter.log, analyze.log, figure.log and export.log. Each line contains a local timestamp and the exact reusable `mspy ...` command. `command_status.tsv` records completion status and duration. Use `mspy project history --project PROJECT --category layout --tail 20` to inspect recent commands in the terminal.
 
 Use `--increment` (alias `--new-output`) when you want to preserve an existing derived result. Maps and figures become `_1`, `_2`, ... files; process stages become `INTERPOLATED_1`, `CLEAN_1`, etc.; filter stages and other export products follow the same numbered pattern. Without the flag, existing behavior is unchanged.
 

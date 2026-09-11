@@ -1,103 +1,63 @@
-# MagSurveyPy v1.0.0
+# MagSurveyPy v1.0.1
 
-![MagSurveyPy](src/magsurveypy/assets/magsurveypy_logo.png)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/main/src/magsurveypy/assets/magsurveypy_logo.png" alt="MagSurveyPy logo" width="720">
+</p>
 
-**Archaeological Magnetometry Prospection Suite**  
-Developed by **Alexandru Hegyi, PhD**  
-Website: https://alexandruhegyi.com · Email: alexandruhegyi@gmail.com · GitHub: https://github.com/alexandruhegyi
+<p align="center">
+  <strong>Archaeological Magnetometry Prospection Suite</strong><br>
+  Open-source processing, analysis, quality control, GIS integration, cartography, and local GIS inspection for archaeological magnetometry.
+</p>
 
-MagSurveyPy is a project-based Python package and command-line application for archaeological magnetometry processing, quality control, analysis, visualization, GIS integration, cartographic export and local Web GIS. The public survey interface is organized around scientific acquisition classes rather than instrument manufacturers.
+<p align="center">
+  <a href="https://pypi.org/project/magsurveypy/"><img src="https://img.shields.io/pypi/v/magsurveypy" alt="PyPI version"></a>
+  <a href="https://pypi.org/project/magsurveypy/"><img src="https://img.shields.io/pypi/pyversions/magsurveypy" alt="Python versions"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue" alt="BSD 3-Clause"></a>
+  <a href="https://doi.org/10.5281/zenodo.22709406"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22709406.svg" alt="Preprint DOI"></a>
+</p>
 
-## Survey model
+**Developed by Alexandru Hegyi, PhD**<br>
+Department of Geosciences, University of Oslo<br>
+UiO: alexandru.hegyi@geo.uio.no · Personal: alexandruhegyi@gmail.com<br>
+Website: https://alexandruhegyi.com · GitHub: https://github.com/alexandruhegyi
 
-MagSurveyPy v1.0.0 uses two primary survey families:
+---
 
-```text
-mspy survey multichannel ...
-mspy survey grid --protocol total-field ...
-mspy survey grid --protocol fluxgate ...
-```
+## Overview
 
-- **Multichannel**: multichannel magnetic acquisition, including supported native acquisition exports and normalized ASC/tabular data while retaining source, session, sensor and channel provenance where available.
-- **Total field**: gridded scalar total magnetic field data in nT. A normal exported file may contain one final reading column and is processed directly.
-- **Fluxgate**: gridded fluxgate magnetometry/gradiometry data, normally in nT/m.
+MagSurveyPy is a project-based Python package and command-line application for archaeological magnetometry. It supports **multichannel magnetic acquisition**, **gridded total-field magnetometry**, and **fluxgate magnetometry/gradiometry** in a common workflow built around the `mspy` command.
 
-File formats are adapters, not survey categories. Supported workflows include PRM as one multichannel input example, paired HDR/DAT as one grid-format example, and generic ASC/CSV/TXT/XYZ/DAT and quantitative GIS raster/vector formats where scientifically meaningful.
+The software combines:
 
-### Optional gradients from split-sensor total-field data
+- native and generic data import;
+- acquisition-aware survey processing;
+- interpolation with explicit spatial support;
+- observation- and raster-domain filtering;
+- line, traverse, grid, and background corrections;
+- robust statistics, spectral analysis, and QC;
+- enhancement and optional segmentation/vectorization;
+- georeferencing and reprojection;
+- quantitative GeoTIFF, ASCII-grid, CSV, and GIS export;
+- scientific figures and cartographic output;
+- a **local GIS interface** for interactive inspection, profiles, drawing, georeferencing, and current-view export;
+- project history and incremented result branches for reproducibility.
 
-If a total-field file retains two simultaneous sensor channels, MagSurveyPy can create an **additional** vertical or horizontal gradient product without replacing the original total-field result:
+Supported native readers are used where acquisition metadata are encoded in instrument files. Generic ASC, CSV, TXT, XYZ, DAT, raster, and GIS formats can be used when their coordinates and measurement fields are sufficiently defined.
 
-```bash
-mspy survey grid --project Site --protocol total-field \
-  --gradient vertical --sensor-separation 0.50
+---
 
-mspy survey grid --project Site --protocol total-field \
-  --gradient horizontal --sensor-separation 0.50
-```
+## Software architecture
 
-For vertical geometry, the default paired-sensor convention is sensor 1/top and sensor 2/bottom, with `(top - bottom) / separation`. For horizontal geometry, sensor 1/left and sensor 2/right are used, with `(right - left) / separation`. Column names and sign convention can be specified explicitly. If a measured gradient column already exists, it can be used directly. **Sensor separation is never guessed.**
+MagSurveyPy separates input decoding, positioning, project data, quantitative processing, analysis, and presentation. Raw inputs remain separate from derived products, while each processing stage can retain its own reports, diagnostics, previews, and comparisons.
 
-A file containing only one final reading column remains a standard total-field input; simply omit `--gradient`.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/main/docs/assets/architecture_overview.svg" alt="MagSurveyPy software architecture" width="100%">
+</p>
 
-## Installation
-
-### Recommended: pip
-
-When MagSurveyPy is available from PyPI:
-
-```bash
-python -m pip install magsurveypy
-```
-
-For the current source checkout:
-
-```bash
-python -m pip install .
-```
-
-Installation creates the `mspy` command automatically through the package entry point:
-
-```bash
-mspy --version
-mspy --help
-mspy tools doctor
-```
-
-Upgrade later with:
-
-```bash
-python -m pip install --upgrade magsurveypy
-```
-
-Uninstall with:
-
-```bash
-python -m pip uninstall magsurveypy
-```
-
-This removes the installed Python package and the `mspy` entry point from the active environment. It does **not** remove MagSurveyPy projects, raw survey data, processed results, source folders or downloaded archives.
-
-### Alternative: Conda environment
-
-From the repository root:
-
-```bash
-conda env create -f environment.yml
-conda activate magsurveypy
-mspy --version
-```
-
-The supplied Conda environment installs the MagSurveyPy package itself, so the same `mspy` command is available; no manual launcher or shell alias is required.
-
-See [INSTALL.md](INSTALL.md) for details.
-
-## Project creation
-
-Projects are stored by default under `~/MagSurveyPy_Projects/` and use generic acquisition folders:
+The project model is intentionally explicit:
 
 ```text
-Site/
+Project/
 ├── project.json
 ├── RawData/
 │   ├── Multichannel/
@@ -115,55 +75,150 @@ Site/
 └── Temp/
 ```
 
-Create a project according to its main acquisition class:
+Automatic processing figures follow the same structure across result stages:
 
-```bash
-mspy project init Rupea --category multichannel
-mspy project init Foeni --category total-field
-mspy project init GradSite --category fluxgate
-mspy project init MixedSite --category mixed
+```text
+PNG/
+├── Comparison/
+├── Products/
+├── QC/
+└── Diagnostics/
 ```
 
-Import data into the corresponding generic branch:
+`Comparison/` contains the principal source/result comparison and, where relevant, a separately retained removed component. `Products/` contains clean raster previews, `QC/` contains quality-control figures, and `Diagnostics/` contains spectra and specialist diagnostic plots. Publication cartography remains under `mspy figure` and `mspy export`.
+
+---
+
+## Processing domains
+
+Quantitative processing is separated from display-only operations. Acquisition decoding and positioning occur before observation-domain corrections; interpolation creates quantitative rasters with explicit support; raster filters create new quantitative branches; brightness, contrast, gamma, saturation, and display ranges remain presentation controls and do not rewrite raster values.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/main/docs/assets/processing_domains.svg" alt="MagSurveyPy processing domains" width="100%">
+</p>
+
+This distinction is important when evaluating filters. Where applicable, MagSurveyPy retains source, filtered, and removed-component products separately so that the effect of a processing choice can be inspected rather than inferred only from the appearance of the final map.
+
+---
+
+## Installation
+
+### Recommended: pip
+
+Install the published package with:
 
 ```bash
-mspy project import Rupea /path/to/data --type multichannel
-mspy project import Foeni /path/to/data --type total-field
-mspy project import GradSite /path/to/data --type fluxgate
+python -m pip install magsurveypy
 ```
 
-`--mode link` can be used instead of copying files when appropriate.
+Upgrade with:
 
-## Typical workflows
+```bash
+python -m pip install --upgrade magsurveypy
+```
+
+Verify the installation:
+
+```bash
+mspy --version
+mspy --help
+mspy tools doctor
+```
+
+Install from a source checkout with:
+
+```bash
+python -m pip install .
+```
+
+Uninstall with:
+
+```bash
+python -m pip uninstall magsurveypy
+```
+
+Uninstalling removes the installed Python package and the `mspy` command from the active environment. It does **not** remove MagSurveyPy projects, raw data, processed results, source folders, or downloaded archives.
+
+### Alternative: Conda environment
+
+From the repository root:
+
+```bash
+conda env create -f environment.yml
+conda activate magsurveypy
+mspy --version
+```
+
+The supplied environment installs MagSurveyPy itself, so `mspy` is created automatically.
+
+See [INSTALL.md](INSTALL.md) and [docs/INSTALL.md](docs/INSTALL.md) for details.
+
+---
+
+## Quick start
+
+The canonical public syntax uses the same option names across the application:
+
+```text
+--project    working project
+--input      explicit external input, where required
+--from       existing result stage
+--output     explicit output override
+--increment  preserve an existing result and create a numbered branch
+```
+
+A compact multichannel workflow is:
+
+```bash
+mspy project init --project Site --category multichannel
+mspy project import --project Site --input /path/to/data --type multichannel
+mspy survey multichannel --project Site --format auto --workflow standard
+mspy analyze survey --project Site
+mspy process interpolate --project Site --method archaeology
+mspy web --project Site
+```
+
+Historical positional project/input forms remain accepted for compatibility, but new documentation uses the explicit option-based syntax.
+
+---
+
+## Survey workflows
 
 ### Multichannel magnetic acquisition
 
 ```bash
-mspy project init Rupea --category multichannel
-mspy project import Rupea /path/to/multichannel_export --type multichannel
-mspy survey multichannel --project Rupea --format auto --workflow standard
-mspy analyze survey --project Rupea
-mspy process interpolate --project Rupea
-# Explicit source files may also be written as:
-mspy process interpolate --project Rupea --input ./points.asc --method archaeology
-mspy figure single --project Rupea --from INTERPOLATED --display-range 15
+mspy project init --project Site --category multichannel
+mspy project import --project Site --input /path/to/multichannel_data --type multichannel
+mspy survey multichannel --project Site --format auto --workflow standard
+mspy analyze survey --project Site
+mspy process interpolate --project Site --method archaeology
 ```
 
-Normalized ASC can be supplied directly where the existing multichannel importer supports it. Format-specific adapters can be selected explicitly when automatic detection is not suitable.
+Normalized ASC can also be supplied directly where supported. Source/session/sensor/channel provenance is retained where the input format provides it.
 
-### Total-field grid
+### Direct supported SENSYS PRM workflow
+
+For implemented SENSYS PRM structures, MagSurveyPy can decode native magnetic words together with embedded GPS fixes and stored probe geometry. This allows georeferenced observations to be reconstructed directly from the acquisition data without a mandatory intermediate conversion through DLMGPS or MAGNETO.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/main/docs/assets/native_prm_workflow.svg" alt="Direct native PRM workflow" width="95%">
+</p>
+
+Native compatibility is format-specific; supported PRM structures should not be interpreted as universal compatibility with every historic or future PRM variant.
+
+### Gridded total-field magnetometry
 
 ```bash
-mspy project init Foeni --category total-field
-mspy project import Foeni /path/to/total_field_data --type total-field
-mspy survey grid --project Foeni --protocol total-field --workflow preservation
-mspy analyze survey --project Foeni --from TOTAL_FIELD
+mspy project init --project Site --category total-field
+mspy project import --project Site --input /path/to/total_field_data --type total-field
+mspy survey grid --project Site --protocol total-field --workflow preservation
+mspy analyze survey --project Site --from TOTAL_FIELD
 ```
 
 A more archaeology-oriented processing example is:
 
 ```bash
-mspy survey grid --project Foeni --protocol total-field \
+mspy survey grid --project Site --protocol total-field \
   --traverse-zero median \
   --deslope robust \
   --destripe protected \
@@ -174,49 +229,158 @@ mspy survey grid --project Foeni --protocol total-field \
   --statistic mean
 ```
 
-The absolute/reference field is retained separately from derived archaeology-oriented products.
+The absolute/reference field remains separate from derived archaeology-oriented products.
 
-### Fluxgate / gradiometer grid
+### Fluxgate magnetometry / gradiometry
 
 ```bash
-mspy project init GradSite --category fluxgate
-mspy project import GradSite /path/to/grid_data --type fluxgate
-mspy layout gui --project GradSite --protocol fluxgate
-mspy layout validate --project GradSite --protocol fluxgate
-mspy survey grid --project GradSite --protocol fluxgate --workflow archaeology
-mspy analyze survey --project GradSite --from FLUXGATE
+mspy project init --project Site --category fluxgate
+mspy project import --project Site --input /path/to/grid_data --type fluxgate
+mspy layout gui --project Site --protocol fluxgate
+mspy layout validate --project Site --protocol fluxgate
+mspy survey grid --project Site --protocol fluxgate --workflow archaeology
+mspy analyze survey --project Site --from FLUXGATE
 ```
+
+### Optional paired-sensor gradients
+
+If a total-field file retains paired sensor channels, an additional vertical or horizontal gradient can be derived when the physical sensor geometry is known. Existing measured-gradient columns can also be used directly. Sensor separation is never silently inferred.
+
+```bash
+mspy survey grid --project Site --protocol total-field \
+  --gradient vertical --sensor-separation 0.50
+```
+
+Gradient derivation is an optional secondary product; ordinary one-column total-field data remain normal total-field inputs.
+
+---
+
+## Interpolation, filtering, QC, and segmentation
+
+MagSurveyPy provides several interpolation and processing branches, including:
+
+- measured-cell aggregation;
+- linear TIN interpolation;
+- inverse-distance weighting;
+- local kriging;
+- nearest-neighbour and bounded cubic alternatives;
+- support masks and preserved NoData gaps;
+- robust despiking;
+- traverse and line levelling;
+- Gaussian and median filtering;
+- spatial high-pass/low-pass filtering;
+- Fourier-domain filters and directional diagnostics;
+- plane removal and upward continuation;
+- survey, line, sensor, raster, and spectral QC;
+- optional segmentation and candidate vectorization as interpretive support.
+
+Segmentation produces auxiliary candidate objects and does not replace the quantitative magnetic raster or constitute automatic archaeological interpretation.
+
+---
+
+## Local GIS interface
+
+Launch the local GIS interface with:
+
+```bash
+mspy web --project Site
+```
+
+It provides project-aware raster display, basemaps, statistics, profiles, drawing tools, georeferencing, layer controls, and export of the current map view. Display adjustments such as brightness, contrast, gamma, saturation, opacity, and manual display limits do not alter the stored quantitative raster.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/main/docs/assets/local_gis_public.png" alt="MagSurveyPy local GIS interface" width="100%">
+</p>
+
+The local GIS is intended for rapid project-linked inspection and spatial work; it does not attempt to replace a full desktop GIS.
+
+---
 
 ## Command groups
 
-```text
-project   create, import, configure and inspect projects
-survey    initial acquisition-aware processing
-layout    define and validate local-grid geometry
-process   interpolation, cleaning, enhancement and derived products
-filter    explicit observation/raster corrections
-analyze   survey, line, sensor, raster, spectrum and stage QC
-figure    scientific and publication figures
-export    GIS/cartographic outputs and reprojection
-web       interactive local Web GIS
-gnss      GNSS/RINEX/PPK utilities
-tools     diagnostics and generated help
-guide     scientific workflow guides
-help      detailed command help
+| Group | Purpose |
+|---|---|
+| `project` | create, import, configure, inspect, and track projects |
+| `survey` | acquisition-aware multichannel and grid processing |
+| `layout` | define and validate local-grid geometry |
+| `process` | interpolation, cleaning, enhancement, segmentation, thinning |
+| `filter` | observation- and raster-domain corrections |
+| `analyze` | survey, line, sensor, raster, spectrum, and stage QC |
+| `figure` | scientific and publication figures |
+| `export` | GIS/cartographic output, reprojection, contours, bundles |
+| `web` | local GIS interface |
+| `gnss` | GNSS/RINEX/PPK utilities |
+| `tools` | diagnostics and generated help |
+| `guide` | scientific workflow guides |
+| `help` | detailed command help |
+
+Start with:
+
+```bash
+mspy --help
+mspy project --help
+mspy survey --help
+mspy survey grid --help
+mspy guide projects
+mspy guide installation
 ```
 
-Use `mspy --help`, `mspy project --help`, `mspy survey --help`, and `mspy survey grid --help` for built-in documentation.
+The detailed documentation is under [`docs/`](docs/), including workflow, filtering, interpolation, total-field, fluxgate, PRM, georeferencing, export, QC, and local GIS guides.
+
+---
 
 ## Reproducibility and data preservation
 
-MagSurveyPy keeps original field files separate from derived products. Processing commands maintain project logs, and `--increment` can preserve an existing derived stage while creating a numbered output stage. Analysis commands create diagnostics without altering scientific data. Display-only controls such as brightness, contrast, gamma and saturation do not modify quantitative raster values.
+MagSurveyPy keeps field inputs separate from derived products. Processing commands maintain project histories, and `--increment` can preserve an existing stage while creating a numbered alternative. Analysis commands create diagnostics without modifying scientific data.
+
+The project structure therefore preserves the distinction between:
+
+1. source/acquisition data;
+2. normalized observations;
+3. quantitative processing stages;
+4. QC and diagnostic products;
+5. publication/cartographic outputs;
+6. display-only operations.
+
+---
+
+## Scientific description and citation
+
+A detailed description of the architecture, numerical processing, native PRM workflow, GIS handling, QC, and reproducibility model is available as a Zenodo preprint:
+
+> **Hegyi, A. (2026). _MagSurveyPy: An Open-Source Framework for Archaeological Magnetometry Processing and Spatial Analysis_ (Version 1). Zenodo.**<br>
+> https://doi.org/10.5281/zenodo.22709406
+
+The currently published version-specific software archive is:
+
+> **Hegyi, A. (2026). _MagSurveyPy — Archaeological Magnetometry Prospection Suite_ (Version 1.0.0) [Computer software]. Zenodo.**<br>
+> https://doi.org/10.5281/zenodo.22698049
+
+For research use, please cite the **scientific description** and the **specific software version used**. The `CITATION.cff` file contains the software metadata and identifies the preprint as the preferred scientific citation. The version-specific Zenodo DOI for v1.0.1 can be added after the release has been archived.
+
+See [CITATION.cff](CITATION.cff).
+
+---
+
+## v1.0.1 consistency update
+
+Version 1.0.1 is a consistency-focused release. It does not intentionally change the established scientific processing algorithms. The main changes are:
+
+- uniform `--project`, `--input`, `--from`, `--output`, and `--increment` conventions;
+- compatibility with historical positional forms;
+- consistent `PNG/Comparison`, `PNG/Products`, `PNG/QC`, and `PNG/Diagnostics` output organization;
+- common automatic raster-preview and comparison styling;
+- adaptive colorbar tick density to avoid overlapping labels, including large absolute total-field values;
+- separation of routine processing previews from explicit publication/cartographic decoration;
+- retained removed-component products where appropriate for filtering audits;
+- updated documentation and citation metadata.
+
+See [docs/RELEASE_NOTES_v1.0.1.md](docs/RELEASE_NOTES_v1.0.1.md).
+
+---
 
 ## License and warranty
 
-MagSurveyPy is distributed under the **BSD 3-Clause License**. The full legal terms are in [LICENSE](LICENSE).
+MagSurveyPy is distributed under the **BSD 3-Clause License**. See [LICENSE](LICENSE).
 
-The software is provided **“AS IS”**, without warranties of any kind. Users remain responsible for validating processing choices, coordinate systems, sensor geometry, derived gradients, quantitative outputs and archaeological interpretation for their own data and purpose.
-
-## Citation
-
-Citation metadata are supplied in [CITATION.cff](CITATION.cff). A persistent DOI will be added after the v1.0.0 release is archived.
+The software is provided **“AS IS”**, without warranties of any kind. Users remain responsible for validating processing choices, coordinate systems, sensor geometry, quantitative outputs, and archaeological interpretation for their own data and purpose.

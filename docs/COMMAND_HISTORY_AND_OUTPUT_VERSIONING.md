@@ -1,6 +1,6 @@
 # Command history, reproducibility and numbered outputs
 
-MagSurveyPy 1.0.0 records project-scoped commands automatically so processing decisions can be traced and repeated later.
+MagSurveyPy 1.0.1 records project-scoped commands automatically so processing decisions can be traced and repeated later.
 
 ## Project Logs folder
 
@@ -39,13 +39,13 @@ Existing projects do not need migration. `Logs/` is created automatically the ne
 Master history:
 
 ```bash
-mspy project history RUPEA2017CS --tail 30
+mspy project history --project RUPEA2017CS --tail 30
 ```
 
 Only layout commands:
 
 ```bash
-mspy project history RUPEA2017CS --category layout --tail 20
+mspy project history --project RUPEA2017CS --category layout --tail 20
 ```
 
 Other useful categories include `survey`, `process`, `filter`, `analyze`, `figure`, `export`, `web` and `project`.

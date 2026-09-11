@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.0 — Functions and Results Reference
+# MagSurveyPy 1.0.1 — Functions and Results Reference
 
 Developed by **Alexandru Hegyi, PhD**.
 
@@ -291,6 +291,6 @@ For a publication or archive, retain:
 
 ---
 
-**MagSurveyPy 1.0.0** — Archaeological Magnetometry Prospection Suite  
-Developed by **Alexandru Hegyi, PhD**  
+**MagSurveyPy 1.0.1** — Archaeological Magnetometry Prospection Suite
+Developed by **Alexandru Hegyi, PhD**
 https://alexandruhegyi.com · alexandruhegyi@gmail.com · https://github.com/alexandruhegyi

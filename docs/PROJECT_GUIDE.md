@@ -20,7 +20,7 @@ The category is project metadata; it does not prevent you from importing another
 ### Multichannel
 
 ```bash
-mspy project init Rupea --category multichannel
+mspy project init --project Rupea --category multichannel
 ```
 
 Use this when measurements contain multiple sensors/channels, repeated acquisition sessions, or a multichannel acquisition export. Supported formats are adapters; the project is not tied to a manufacturer.
@@ -28,7 +28,7 @@ Use this when measurements contain multiple sensors/channels, repeated acquisiti
 ### Total field
 
 ```bash
-mspy project init Foeni --category total-field
+mspy project init --project Foeni --category total-field
 ```
 
 Use this for scalar total magnetic field measurements. A common exported DAT/CSV contains coordinates plus one final reading column. Such files are processed normally and do not require sensor geometry.
@@ -50,7 +50,7 @@ mspy survey grid --project Foeni --protocol total-field \
 ### Fluxgate / gradiometer
 
 ```bash
-mspy project init GradSite --category fluxgate
+mspy project init --project GradSite --category fluxgate
 ```
 
 Use this for gridded fluxgate magnetometry/gradiometry. Paired metadata/data files are supported where implemented, but the project category remains `fluxgate` regardless of manufacturer.
@@ -58,7 +58,7 @@ Use this for gridded fluxgate magnetometry/gradiometry. Paired metadata/data fil
 ### Mixed project
 
 ```bash
-mspy project init Site --category mixed
+mspy project init --project Site --category mixed
 ```
 
 Use this when the same archaeological project contains multiple acquisition classes.
@@ -66,7 +66,7 @@ Use this when the same archaeological project contains multiple acquisition clas
 Optional metadata can be supplied during creation:
 
 ```bash
-mspy project init Site --category total-field --crs EPSG:32635 --notes "Survey area 2"
+mspy project init --project Site --category total-field --crs EPSG:32635 --notes "Survey area 2"
 ```
 
 ## Generic folder structure
@@ -97,15 +97,15 @@ New projects use only these generic names. Older pre-release project trees remai
 Copy files into the project:
 
 ```bash
-mspy project import Site /path/to/data --type multichannel
-mspy project import Site /path/to/data --type total-field
-mspy project import Site /path/to/data --type fluxgate
+mspy project import --project Site --input /path/to/data --type multichannel
+mspy project import --project Site --input /path/to/data --type total-field
+mspy project import --project Site --input /path/to/data --type fluxgate
 ```
 
 Link instead of copying:
 
 ```bash
-mspy project import Site /path/to/data --type total-field --mode link
+mspy project import --project Site --input /path/to/data --type total-field --mode link
 ```
 
 Other supported branches are `generic`, `gnss` and `base-station`.
@@ -117,22 +117,22 @@ When the source is a directory, files are imported while preserving useful relat
 Show defaults:
 
 ```bash
-mspy project config Site
+mspy project config --project Site
 ```
 
 Set common values:
 
 ```bash
-mspy project config Site --cell-size 0.25 --fill-distance 0.50 --statistic median --cores 8
+mspy project config --project Site --cell-size 0.25 --fill-distance 0.50 --statistic median --cores 8
 ```
 
 ## Inspect the project
 
 ```bash
 mspy project list
-mspy project status Site
-mspy project tree Site
-mspy project path Site
+mspy project status --project Site
+mspy project tree --project Site
+mspy project path --project Site
 ```
 
 ## Local-grid layout

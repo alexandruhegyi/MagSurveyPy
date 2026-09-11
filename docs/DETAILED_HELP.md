@@ -1,6 +1,6 @@
 # Detailed Help
 
-The executable help is the authoritative option reference for MagSurveyPy 1.0.0.
+The executable help is the authoritative option reference for MagSurveyPy 1.0.1.
 
 ```bash
 mspy --help

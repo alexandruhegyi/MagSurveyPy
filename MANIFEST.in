@@ -3,7 +3,7 @@ include INSTALL.md
 include BATCH_COMMAND_EXAMPLES.md
 recursive-include src/magsurveypy/assets *.png
 recursive-include src/magsurveypy/web *.html
-recursive-include docs *.md
+recursive-include docs *.md *.png *.svg
 recursive-include examples *.sh *.ps1
 recursive-include templates *.csv
 

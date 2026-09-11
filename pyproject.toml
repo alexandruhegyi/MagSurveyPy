@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "magsurveypy"
-version = "1.0.0"
+version = "1.0.1"
 description = "Archaeological Magnetometry Prospection Suite"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -69,6 +69,7 @@ Homepage = "https://alexandruhegyi.com"
 Documentation = "https://github.com/alexandruhegyi/MagSurveyPy"
 Source = "https://github.com/alexandruhegyi/MagSurveyPy"
 Issues = "https://github.com/alexandruhegyi/MagSurveyPy/issues"
+Publication = "https://doi.org/10.5281/zenodo.22709406"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

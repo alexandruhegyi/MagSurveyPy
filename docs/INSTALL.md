@@ -1,4 +1,4 @@
-# MagSurveyPy v1.0.0 — Installation
+# MagSurveyPy v1.0.1 — Installation
 
 MagSurveyPy supports Python 3.11 and newer. The installed command-line interface is `mspy`.
 
@@ -118,24 +118,24 @@ $env:MAGSURVEYPY_WORKSPACE = "D:\MagSurveyPy_Projects"
 Multichannel:
 
 ```bash
-mspy project init Site --category multichannel
-mspy project import Site /path/to/data --type multichannel
+mspy project init --project Site --category multichannel
+mspy project import --project Site --input /path/to/data --type multichannel
 mspy survey multichannel --project Site --format auto --workflow standard
 ```
 
 Total field:
 
 ```bash
-mspy project init Site --category total-field
-mspy project import Site /path/to/data --type total-field
+mspy project init --project Site --category total-field
+mspy project import --project Site --input /path/to/data --type total-field
 mspy survey grid --project Site --protocol total-field --workflow preservation
 ```
 
 Fluxgate/gradiometer:
 
 ```bash
-mspy project init Site --category fluxgate
-mspy project import Site /path/to/data --type fluxgate
+mspy project init --project Site --category fluxgate
+mspy project import --project Site --input /path/to/data --type fluxgate
 mspy survey grid --project Site --protocol fluxgate --workflow archaeology
 ```
 

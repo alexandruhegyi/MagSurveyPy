@@ -79,7 +79,7 @@ def _box_line(text: str, colour: bool, spans=()) -> str:
     return DIM_GRAY + "│" + RESET + "".join(pieces) + DIM_GRAY + "│" + RESET
 
 
-def banner_text(version: str = "1.0.0", author: str = "Alexandru Hegyi, PhD",
+def banner_text(version: str = "1.0.1", author: str = "Alexandru Hegyi, PhD",
                 website: str = "https://alexandruhegyi.com",
                 email: str = "alexandruhegyi@gmail.com", colour: bool = False) -> str:
     mesh = [
@@ -126,7 +126,7 @@ def banner_text(version: str = "1.0.0", author: str = "Alexandru Hegyi, PhD",
     return "\n".join(lines)
 
 
-def print_banner(version: str = "1.0.0", author: str = "Alexandru Hegyi, PhD",
+def print_banner(version: str = "1.0.1", author: str = "Alexandru Hegyi, PhD",
                  website: str = "https://alexandruhegyi.com",
                  email: str = "alexandruhegyi@gmail.com") -> None:
     colour = _enable_utf8_and_vt()

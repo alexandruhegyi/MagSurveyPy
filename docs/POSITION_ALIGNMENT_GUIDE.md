@@ -1,4 +1,4 @@
-# SENSYS Position Allocation Guide — MagSurveyPy Version 1.0.0
+# SENSYS Position Allocation Guide — MagSurveyPy Version 1.0.1
 
 The production PRM workflow uses the timing and GPS structure embedded in the PRM directly.
 

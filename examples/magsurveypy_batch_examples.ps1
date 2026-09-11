@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.0 PowerShell batch examples
+# MagSurveyPy 1.0.1 PowerShell batch examples
 # Developed by Alexandru Hegyi, PhD
 
 $Projects = @("Rupea", "Noviodunum", "Foeni")
@@ -32,4 +32,4 @@ foreach ($Project in $GradientProjects) {
 # mspy process interpolate --project Rupea --increment
 # mspy figure single --project Rupea --from INTERPOLATED --display-std 2 --increment
 # mspy export map --project Rupea --from INTERPOLATED --display-std 2 --increment
-# mspy project history Rupea --category process --tail 20
+# mspy project history --project Rupea --category process --tail 20

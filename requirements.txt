@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.0 — standard cross-platform runtime
+# MagSurveyPy 1.0.1 — standard cross-platform runtime
 # Install all standard scientific, GIS, plotting and online-basemap features with:
 #   python -m pip install -r requirements.txt
 # The local Web GIS uses Python standard-library HTTP serving; no extra web framework is required.

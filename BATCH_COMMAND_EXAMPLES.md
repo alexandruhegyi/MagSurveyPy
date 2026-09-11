@@ -5,8 +5,8 @@ These examples use the public acquisition-class interface.
 ## Multichannel survey
 
 ```bash
-mspy project init Rupea --category multichannel
-mspy project import Rupea /path/to/acquisition_export --type multichannel
+mspy project init --project Rupea --category multichannel
+mspy project import --project Rupea --input /path/to/acquisition_export --type multichannel
 mspy survey multichannel --project Rupea --format auto --workflow standard
 mspy analyze survey --project Rupea
 mspy process interpolate --project Rupea
@@ -25,8 +25,8 @@ mspy survey multichannel --project Site --format auto --workflow noisy
 ## Total-field preservation workflow
 
 ```bash
-mspy project init Site --category total-field
-mspy project import Site /path/to/data --type total-field
+mspy project init --project Site --category total-field
+mspy project import --project Site --input /path/to/data --type total-field
 mspy survey grid --project Site --protocol total-field --workflow preservation
 ```
 
@@ -59,8 +59,8 @@ These gradient commands retain `Results/TOTAL_FIELD` and add `Results/GRADIENT_V
 ## Fluxgate/gradiometer local grids
 
 ```bash
-mspy project init GradSite --category fluxgate
-mspy project import GradSite /path/to/grid_data --type fluxgate
+mspy project init --project GradSite --category fluxgate
+mspy project import --project GradSite --input /path/to/grid_data --type fluxgate
 mspy layout gui --project GradSite --protocol fluxgate
 mspy layout validate --project GradSite --protocol fluxgate
 mspy survey grid --project GradSite --protocol fluxgate --workflow archaeology

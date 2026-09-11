@@ -7,7 +7,7 @@ Many archaeological scalar/caesium surveys consist of separate local grids whose
 Import the local-grid files:
 
 ```bash
-mspy project import Site /path/to/GridFolder --type total-field
+mspy project import --project Site --input /path/to/GridFolder --type total-field
 ```
 
 Open the visual editor:

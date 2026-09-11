@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MagSurveyPy 1.0.0 batch examples
+# MagSurveyPy 1.0.1 batch examples
 # Developed by Alexandru Hegyi, PhD
 # Edit project names/parameters before running.
 set -euo pipefail
@@ -45,4 +45,4 @@ done
 # mspy process interpolate --project Rupea --increment
 # mspy figure single --project Rupea --from INTERPOLATED --display-std 2 --increment
 # mspy export map --project Rupea --from INTERPOLATED --display-std 2 --increment
-# mspy project history Rupea --category process --tail 20
+# mspy project history --project Rupea --category process --tail 20

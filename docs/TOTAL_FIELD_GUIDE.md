@@ -11,8 +11,8 @@ mspy survey grid --project Site --protocol total-field
 Most exported DAT/CSV/TXT files contain a coordinate pair and one final magnetic reading column. Process these normally:
 
 ```bash
-mspy project init Foeni --category total-field
-mspy project import Foeni /path/to/data --type total-field
+mspy project init --project Foeni --category total-field
+mspy project import --project Foeni --input /path/to/data --type total-field
 mspy survey grid --project Foeni --protocol total-field --workflow preservation
 ```
 

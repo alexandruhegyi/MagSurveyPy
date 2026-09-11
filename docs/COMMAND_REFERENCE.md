@@ -1,24 +1,24 @@
-# Command Reference — Public v1.0.0 Interface
+# Command Reference — Public v1.0.1 Interface
 
 The installed executable is `mspy`.
 
 ## Project
 
 ```bash
-mspy project init PROJECT --category multichannel|total-field|fluxgate|mixed
-mspy project import PROJECT SOURCE --type multichannel|total-field|fluxgate|generic|gnss|base-station
-mspy project config PROJECT [options]
-mspy project status PROJECT
-mspy project tree PROJECT
-mspy project path PROJECT
-mspy project history PROJECT
+mspy project init --project PROJECT --category multichannel|total-field|fluxgate|mixed
+mspy project import --project PROJECT --input SOURCE --type multichannel|total-field|fluxgate|generic|gnss|base-station
+mspy project config --project PROJECT [options]
+mspy project status --project PROJECT
+mspy project tree --project PROJECT
+mspy project path --project PROJECT
+mspy project history --project PROJECT
 ```
 
 Examples:
 
 ```bash
-mspy project init Rupea --category multichannel --crs EPSG:3844
-mspy project import Rupea /data/Rupea --type multichannel
+mspy project init --project Rupea --category multichannel --crs EPSG:3844
+mspy project import --project Rupea --input /data/Rupea --type multichannel
 ```
 
 ## Survey

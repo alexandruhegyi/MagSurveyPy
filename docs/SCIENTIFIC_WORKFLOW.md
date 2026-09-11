@@ -1,6 +1,6 @@
 # Scientific Workflow
 
-MagSurveyPy 1.0.0 uses a workflow that keeps original/reference data separate from derived products in which every command group has a defined scientific role.
+MagSurveyPy 1.0.1 uses a workflow that keeps original/reference data separate from derived products in which every command group has a defined scientific role.
 
 ```text
 RAW FIELD DATA

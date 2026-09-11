@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.0 — Raster Georeferencing Guide
+# MagSurveyPy 1.0.1 — Raster Georeferencing Guide
 
 ## Purpose
 
@@ -129,8 +129,8 @@ col,row,x,y
 Then run:
 
 ```bash
-mspy project georeference SITE \
-  /path/to/unreferenced.tif \
+mspy project georeference --project SITE \
+  --input /path/to/unreferenced.tif \
   --gcps /path/to/control_points.csv \
   --crs EPSG:32634
 ```
@@ -144,8 +144,8 @@ PROJECT/Results/GEOREFERENCED/<source>_georeferenced.tif
 Custom output:
 
 ```bash
-mspy project georeference SITE \
-  /path/to/unreferenced.tif \
+mspy project georeference --project SITE \
+  --input /path/to/unreferenced.tif \
   --gcps control_points.csv \
   --crs EPSG:32634 \
   -o SITE_GPS_georeferenced.tif

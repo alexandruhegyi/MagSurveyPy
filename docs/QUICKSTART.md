@@ -26,17 +26,17 @@ mspy tools doctor
 Choose the scientific acquisition class:
 
 ```bash
-mspy project init Site --category multichannel
-mspy project init Site --category total-field
-mspy project init Site --category fluxgate
+mspy project init --project Site --category multichannel
+mspy project init --project Site --category total-field
+mspy project init --project Site --category fluxgate
 ```
 
 ## 3. Import data
 
 ```bash
-mspy project import Site /path/to/data --type multichannel
-mspy project import Site /path/to/data --type total-field
-mspy project import Site /path/to/data --type fluxgate
+mspy project import --project Site --input /path/to/data --type multichannel
+mspy project import --project Site --input /path/to/data --type total-field
+mspy project import --project Site --input /path/to/data --type fluxgate
 ```
 
 ## 4. Run the initial survey processing

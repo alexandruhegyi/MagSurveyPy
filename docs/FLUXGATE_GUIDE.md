@@ -5,8 +5,8 @@ MagSurveyPy treats fluxgate magnetometry/gradiometry as a scientific grid acquis
 ## Project setup
 
 ```bash
-mspy project init GradSite --category fluxgate
-mspy project import GradSite /path/to/grid_data --type fluxgate
+mspy project init --project GradSite --category fluxgate
+mspy project import --project GradSite --input /path/to/grid_data --type fluxgate
 ```
 
 Input is stored in:

@@ -3,8 +3,8 @@
 For scalar/total-field local grids, assembly is project based and explicit. Import the field grids, create the layout visually, validate it and process the survey:
 
 ```bash
-mspy project init Site --protocol total-field
-mspy project import Site /path/to/GridFolder --type total-field
+mspy project init --project Site --category total-field
+mspy project import --project Site --input /path/to/GridFolder --type total-field
 mspy layout gui --project Site --grid-width 40 --grid-height 40
 mspy layout validate --project Site
 mspy survey grid --protocol total-field --project Site --workflow preservation
