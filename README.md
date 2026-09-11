@@ -13,6 +13,7 @@
   <a href="https://pypi.org/project/magsurveypy/"><img src="https://img.shields.io/pypi/v/magsurveypy" alt="PyPI version"></a>
   <a href="https://pypi.org/project/magsurveypy/"><img src="https://img.shields.io/pypi/pyversions/magsurveypy" alt="Python versions"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD--3--Clause-blue" alt="BSD 3-Clause"></a>
+  <a href="https://doi.org/10.5281/zenodo.22710282"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22710282.svg" alt="Software DOI"></a>
   <a href="https://doi.org/10.5281/zenodo.22709406"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.22709406.svg" alt="Preprint DOI"></a>
 </p>
 
@@ -231,6 +232,14 @@ mspy survey grid --project Site --protocol total-field \
 
 The absolute/reference field remains separate from derived archaeology-oriented products.
 
+<p align="center">
+  <img src="docs/assets/total_field_processing.png" alt="Total-field interpolation and processing workflow" width="100%">
+</p>
+
+<p align="center"><em>
+Example total-field workflow showing measured-cell support, interpolation, and derived processing products. The support information makes the distinction between measured and interpolated areas explicit.
+</em></p>
+
 ### Fluxgate magnetometry / gradiometry
 
 ```bash
@@ -241,6 +250,14 @@ mspy layout validate --project Site --protocol fluxgate
 mspy survey grid --project Site --protocol fluxgate --workflow archaeology
 mspy analyze survey --project Site --from FLUXGATE
 ```
+
+<p align="center">
+  <img src="docs/assets/fluxgate_cleaning_public.png" alt="Fluxgate processing comparison" width="100%">
+</p>
+
+<p align="center"><em>
+Example multichannel fluxgate/gradiometer processing comparison. The reference raster is retained so that alternative processing branches can be evaluated against the same quantitative input.
+</em></p>
 
 ### Optional paired-sensor gradients
 
@@ -275,6 +292,26 @@ MagSurveyPy provides several interpolation and processing branches, including:
 - optional segmentation and candidate vectorization as interpretive support.
 
 Segmentation produces auxiliary candidate objects and does not replace the quantitative magnetic raster or constitute automatic archaeological interpretation.
+
+### Inspecting filtering results
+
+Where appropriate, MagSurveyPy retains source, filtered, and removed-component products separately. This makes it possible to evaluate what a filter removed rather than judging the processing only from the final map.
+
+<p align="center">
+  <img src="docs/assets/challenging_data_filtering.png" alt="Challenging magnetic raster processing example" width="100%">
+</p>
+
+<p align="center"><em>
+Example processing of a challenging magnetic raster. Source and derived branches are retained separately so that the effect of cleaning and filtering can be inspected directly.
+</em></p>
+
+<p align="center">
+  <img src="docs/assets/multichannel_filter_removed_component.png" alt="Multichannel filtering and removed-component audit" width="100%">
+</p>
+
+<p align="center"><em>
+Multichannel filtering example showing the source raster, retained filtered component, and removed component. The removed component provides a direct audit of the structures suppressed by the selected filter.
+</em></p>
 
 ---
 
@@ -351,12 +388,12 @@ A detailed description of the architecture, numerical processing, native PRM wor
 > **Hegyi, A. (2026). _MagSurveyPy: An Open-Source Framework for Archaeological Magnetometry Processing and Spatial Analysis_ (Version 1). Zenodo.**<br>
 > https://doi.org/10.5281/zenodo.22709406
 
-The currently published version-specific software archive is:
+The current version-specific software archive is:
 
-> **Hegyi, A. (2026). _MagSurveyPy — Archaeological Magnetometry Prospection Suite_ (Version 1.0.0) [Computer software]. Zenodo.**<br>
-> https://doi.org/10.5281/zenodo.22698049
+> **Hegyi, A. (2026). _MagSurveyPy: Archaeological Magnetometry Prospection Suite_ (Version 1.0.1) [Computer software]. Zenodo.**<br>
+> https://doi.org/10.5281/zenodo.22710282
 
-For research use, please cite the **scientific description** and the **specific software version used**. The `CITATION.cff` file contains the software metadata and identifies the preprint as the preferred scientific citation. The version-specific Zenodo DOI for v1.0.1 can be added after the release has been archived.
+For research use, please cite the **scientific description** and the **specific software version used**. The `CITATION.cff` file contains the version-specific software DOI and identifies the preprint as the preferred scientific citation.
 
 See [CITATION.cff](CITATION.cff).
 
