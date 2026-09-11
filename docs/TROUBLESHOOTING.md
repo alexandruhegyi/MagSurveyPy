@@ -14,7 +14,7 @@ mspy tools help-all
 
 ## Interpolation fills a real acquisition gap
 
-Default Version 1.0.2 behavior preserves large gaps. Confirm the report says `Gap policy: auto`. To be more conservative:
+Default Version 1.0.3 behavior preserves large gaps. Confirm the report says `Gap policy: auto`. To be more conservative:
 
 ```bash
 mspy process interpolate --project Site --max-gap 0.75

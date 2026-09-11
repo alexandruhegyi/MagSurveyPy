@@ -1,4 +1,4 @@
-# SENSYS PRM Guide — MagSurveyPy Version 1.0.2
+# SENSYS PRM Guide — MagSurveyPy Version 1.0.3
 
 ## Purpose
 

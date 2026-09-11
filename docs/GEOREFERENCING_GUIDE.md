@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.2 — Raster Georeferencing Guide
+# MagSurveyPy 1.0.3 — Raster Georeferencing Guide
 
 ## Purpose
 

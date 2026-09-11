@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.2 — Web GIS Guide
+# MagSurveyPy 1.0.3 — Web GIS Guide
 
 ## Launch
 
@@ -23,7 +23,7 @@ MagSurveyPy starts a responsive local Web GIS on `127.0.0.1:8050`. Stop it with 
 - **Draw** — point/line/polygon creation and per-feature editing;
 - **Export** — exact-current-canvas publication export.
 
-The Web GIS displays MagSurveyPy 1.0.2 and developer/contact credits in the application interface and About dialog.
+The Web GIS displays MagSurveyPy 1.0.3 and developer/contact credits in the application interface and About dialog.
 
 ## Fine zoom
 
@@ -141,7 +141,7 @@ Web styling, basemaps, profiles, drawings and publication export never rewrite q
 
 ---
 
-**MagSurveyPy 1.0.2** — Developed by **Alexandru Hegyi, PhD**
+**MagSurveyPy 1.0.3** — Developed by **Alexandru Hegyi, PhD**
 https://alexandruhegyi.com · alexandruhegyi@gmail.com · https://github.com/alexandruhegyi
 
 

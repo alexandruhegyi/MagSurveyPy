@@ -7,7 +7,7 @@ authors:
   - family-names: "Hegyi"
     given-names: "Alexandru"
     affiliation: "Department of Geosciences, University of Oslo"
-version: 1.0.2
+version: 1.0.3
 date-released: 2026-09-11
 url: "https://github.com/alexandruhegyi/MagSurveyPy"
 repository-code: "https://github.com/alexandruhegyi/MagSurveyPy"

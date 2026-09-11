@@ -1,4 +1,4 @@
-# MagSurveyPy v1.0.2 — Installation
+# MagSurveyPy v1.0.3 — Installation
 
 <!-- conda-cross-platform-start -->
 ## Recommended installation with Miniconda or Anaconda
@@ -74,7 +74,7 @@ mspy --version
 To install the current release explicitly:
 
 ```bash
-python -m pip install magsurveypy==1.0.2
+python -m pip install magsurveypy==1.0.3
 ```
 <!-- conda-cross-platform-end -->
 

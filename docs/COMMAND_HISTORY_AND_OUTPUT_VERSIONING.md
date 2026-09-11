@@ -1,6 +1,6 @@
 # Command history, reproducibility and numbered outputs
 
-MagSurveyPy 1.0.2 records project-scoped commands automatically so processing decisions can be traced and repeated later.
+MagSurveyPy 1.0.3 records project-scoped commands automatically so processing decisions can be traced and repeated later.
 
 ## Project Logs folder
 

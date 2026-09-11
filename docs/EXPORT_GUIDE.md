@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.2 — Export and Cartography Guide
+# MagSurveyPy 1.0.3 — Export and Cartography Guide
 
 MagSurveyPy separates quantitative scientific rasters from their presentation. `export map` and `figure` change only how a product is drawn; they do **not** rewrite magnetic values.
 
@@ -255,5 +255,5 @@ The quantitative GeoTIFF remains the scientific data product. Figures, maps and 
 
 ---
 
-**MagSurveyPy 1.0.2** — Developed by **Alexandru Hegyi, PhD**
+**MagSurveyPy 1.0.3** — Developed by **Alexandru Hegyi, PhD**
 https://alexandruhegyi.com · alexandruhegyi@gmail.com · https://github.com/alexandruhegyi

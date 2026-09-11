@@ -1,6 +1,6 @@
 # Software Architecture and Public API
 
-MagSurveyPy 1.0.2 is designed as a scientific library/application rather than a collection of unrelated scripts.
+MagSurveyPy 1.0.3 is designed as a scientific library/application rather than a collection of unrelated scripts.
 
 ## Public command architecture
 
@@ -24,7 +24,7 @@ Publication composition       GIS/cartography
         figure                 export / web
 ```
 
-Each public group has one scientific responsibility. Old standalone public aliases are intentionally not part of the supported 1.0.2 interface.
+Each public group has one scientific responsibility. Old standalone public aliases are intentionally not part of the supported 1.0.3 interface.
 
 ## Source organization
 

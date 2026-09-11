@@ -1,4 +1,4 @@
-# MagSurveyPy 1.0.2 — Publication Figure Builder
+# MagSurveyPy 1.0.3 — Publication Figure Builder
 
 The `figure` group is intended for papers, reports, supplementary data and processing comparisons. It never modifies the quantitative source raster.
 
@@ -155,5 +155,5 @@ The exact JSON template written by the installed build is the safest starting po
 
 ---
 
-**MagSurveyPy 1.0.2** — Developed by **Alexandru Hegyi, PhD**
+**MagSurveyPy 1.0.3** — Developed by **Alexandru Hegyi, PhD**
 https://alexandruhegyi.com · alexandruhegyi@gmail.com · https://github.com/alexandruhegyi

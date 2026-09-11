@@ -1,7 +1,7 @@
-# MagSurveyPy v1.0.2
+# MagSurveyPy v1.0.3
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/src/magsurveypy/assets/magsurveypy_logo.png" alt="MagSurveyPy logo" width="720">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/src/magsurveypy/assets/magsurveypy_logo.png" alt="MagSurveyPy logo" width="720">
 </p>
 
 <p align="center">
@@ -52,7 +52,7 @@ Supported native readers are used where acquisition metadata are encoded in inst
 MagSurveyPy separates input decoding, positioning, project data, quantitative processing, analysis, and presentation. Raw inputs remain separate from derived products, while each processing stage can retain its own reports, diagnostics, previews, and comparisons.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/architecture_overview.svg" alt="MagSurveyPy software architecture" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/architecture_overview.svg" alt="MagSurveyPy software architecture" width="100%">
 </p>
 
 The project model is intentionally explicit:
@@ -95,7 +95,7 @@ PNG/
 Quantitative processing is separated from display-only operations. Acquisition decoding and positioning occur before observation-domain corrections; interpolation creates quantitative rasters with explicit support; raster filters create new quantitative branches; brightness, contrast, gamma, saturation, and display ranges remain presentation controls and do not rewrite raster values.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/processing_domains.svg" alt="MagSurveyPy processing domains" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/processing_domains.svg" alt="MagSurveyPy processing domains" width="100%">
 </p>
 
 This distinction is important when evaluating filters. Where applicable, MagSurveyPy retains source, filtered, and removed-component products separately so that the effect of a processing choice can be inspected rather than inferred only from the appearance of the final map.
@@ -192,7 +192,7 @@ pip install magsurveypy
 To install the current release explicitly:
 
 ```bash
-python -m pip install magsurveypy==1.0.2
+python -m pip install magsurveypy==1.0.3
 ```
 
 For more detailed installation guidance, see
@@ -244,7 +244,7 @@ Normalized ASC can also be supplied directly where supported. Source/session/sen
 For implemented SENSYS PRM structures, MagSurveyPy can decode native magnetic words together with embedded GPS fixes and stored probe geometry. This allows georeferenced observations to be reconstructed directly from the acquisition data without a mandatory intermediate conversion through DLMGPS or MAGNETO.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/native_prm_workflow.svg" alt="Direct native PRM workflow" width="95%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/native_prm_workflow.svg" alt="Direct native PRM workflow" width="95%">
 </p>
 
 Native compatibility is format-specific; supported PRM structures should not be interpreted as universal compatibility with every historic or future PRM variant.
@@ -275,7 +275,7 @@ mspy survey grid --project Site --protocol total-field \
 The absolute/reference field remains separate from derived archaeology-oriented products.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/total_field_processing.png" alt="Total-field interpolation and processing workflow" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/total_field_processing.png" alt="Total-field interpolation and processing workflow" width="100%">
 </p>
 
 <p align="center"><em>
@@ -294,7 +294,7 @@ mspy analyze survey --project Site --from FLUXGATE
 ```
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/fluxgate_cleaning_public.png" alt="Fluxgate processing comparison" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/fluxgate_cleaning_public.png" alt="Fluxgate processing comparison" width="100%">
 </p>
 
 <p align="center"><em>
@@ -340,7 +340,7 @@ Segmentation produces auxiliary candidate objects and does not replace the quant
 Where appropriate, MagSurveyPy retains source, filtered, and removed-component products separately. This makes it possible to evaluate what a filter removed rather than judging the processing only from the final map.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/challenging_data_filtering.png" alt="Challenging magnetic raster processing example" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/challenging_data_filtering.png" alt="Challenging magnetic raster processing example" width="100%">
 </p>
 
 <p align="center"><em>
@@ -348,7 +348,7 @@ Example processing of a challenging magnetic raster. Source and derived branches
 </em></p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/multichannel_filter_removed_component.png" alt="Multichannel filtering and removed-component audit" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/multichannel_filter_removed_component.png" alt="Multichannel filtering and removed-component audit" width="100%">
 </p>
 
 <p align="center"><em>
@@ -368,7 +368,7 @@ mspy web --project Site
 It provides project-aware raster display, basemaps, statistics, profiles, drawing tools, georeferencing, layer controls, and export of the current map view. Display adjustments such as brightness, contrast, gamma, saturation, opacity, and manual display limits do not alter the stored quantitative raster.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.2/docs/assets/local_gis_public.png" alt="MagSurveyPy local GIS interface" width="100%">
+  <img src="https://raw.githubusercontent.com/alexandruhegyi/MagSurveyPy/v1.0.3/docs/assets/local_gis_public.png" alt="MagSurveyPy local GIS interface" width="100%">
 </p>
 
 The local GIS is intended for rapid project-linked inspection and spatial work; it does not attempt to replace a full desktop GIS.
@@ -440,6 +440,14 @@ For research use, please cite the **scientific description** and the **specific 
 See [CITATION.cff](CITATION.cff).
 
 ---
+
+## v1.0.3 terminal compatibility and installation update
+
+Version 1.0.3 is a terminal-compatibility and installation-documentation patch release. It does not change the scientific processing algorithms, numerical defaults, interpolation mathematics, filtering mathematics, georeferencing, native data decoding, or quantitative GIS behaviour established in v1.0.2.
+
+The release changes the terminal banner from a fixed black foreground to the terminal's default foreground colour so that it remains visible on both dark and light terminal themes. It also expands Windows and macOS installation guidance, with Miniconda or Anaconda used to manage an isolated environment and MagSurveyPy installed from PyPI with `pip`.
+
+See [docs/RELEASE_NOTES_v1.0.3.md](docs/RELEASE_NOTES_v1.0.3.md).
 
 ## v1.0.2 documentation and metadata maintenance
 
