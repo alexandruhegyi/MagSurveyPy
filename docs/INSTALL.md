@@ -1,5 +1,83 @@
 # MagSurveyPy v1.0.2 — Installation
 
+<!-- conda-cross-platform-start -->
+## Recommended installation with Miniconda or Anaconda
+
+MagSurveyPy is published on **PyPI**. For Windows and macOS, the recommended
+approach is to create a dedicated Conda environment and then install
+MagSurveyPy from PyPI using `pip`.
+
+Conda manages the environment; `pip` installs MagSurveyPy.
+
+Do **not** use `conda install magsurveypy` unless a Conda package is explicitly
+published in the future.
+
+### Windows
+
+Open **Miniconda Prompt** or **Anaconda Prompt** and run:
+
+```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
+python -m pip install magsurveypy
+mspy --version
+```
+
+For later sessions:
+
+```bash
+conda activate magsurveypy
+mspy --version
+```
+
+A dedicated MagSurveyPy environment is preferable to installing into an
+application-managed environment such as the default ArcGIS Pro Python
+environment.
+
+### macOS
+
+```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
+python -m pip install magsurveypy
+mspy --version
+```
+
+For later sessions:
+
+```bash
+conda activate magsurveypy
+mspy --version
+```
+
+### Linux
+
+```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
+python -m pip install magsurveypy
+mspy --version
+```
+
+### Direct PyPI installation
+
+Conda is recommended for isolation but is not required:
+
+```bash
+python -m pip install magsurveypy
+mspy --version
+```
+
+To install the current release explicitly:
+
+```bash
+python -m pip install magsurveypy==1.0.2
+```
+<!-- conda-cross-platform-end -->
+
 MagSurveyPy supports Python 3.11 and newer. The installed command-line interface is `mspy`.
 
 ## Recommended installation: pip

@@ -104,57 +104,99 @@ This distinction is important when evaluating filters. Where applicable, MagSurv
 
 ## Installation
 
-### Recommended: pip
+MagSurveyPy is distributed through **PyPI**.
 
-Install the published package with:
+### Recommended setup on Windows and macOS: Miniconda or Anaconda + pip
+
+For Windows and macOS, the recommended approach is to create an isolated
+Conda environment and install MagSurveyPy from PyPI with `pip`.
+
+> **Important:** Conda is used to create and manage the Python environment.
+> MagSurveyPy itself is installed from **PyPI with pip**. It is not currently
+> distributed through a Conda channel.
+
+#### Windows — Miniconda Prompt or Anaconda Prompt
 
 ```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
 python -m pip install magsurveypy
-```
-
-Upgrade with:
-
-```bash
-python -m pip install --upgrade magsurveypy
-```
-
-Verify the installation:
-
-```bash
 mspy --version
-mspy --help
-mspy tools doctor
 ```
 
-Install from a source checkout with:
+For later sessions:
 
 ```bash
-python -m pip install .
-```
-
-Uninstall with:
-
-```bash
-python -m pip uninstall magsurveypy
-```
-
-Uninstalling removes the installed Python package and the `mspy` command from the active environment. It does **not** remove MagSurveyPy projects, raw data, processed results, source folders, or downloaded archives.
-
-### Alternative: Conda environment
-
-From the repository root:
-
-```bash
-conda env create -f environment.yml
 conda activate magsurveypy
 mspy --version
 ```
 
-The supplied environment installs MagSurveyPy itself, so `mspy` is created automatically.
+Activating the environment automatically adds its executable directory to
+`PATH`. This normally avoids the Windows situation where MagSurveyPy installs
+successfully but the `mspy` command cannot be found.
 
-See [INSTALL.md](INSTALL.md) and [docs/INSTALL.md](docs/INSTALL.md) for details.
+A dedicated MagSurveyPy environment is preferable to installing into an
+application-managed Python environment such as the default ArcGIS Pro
+environment.
 
----
+#### macOS
+
+After installing Miniconda or Anaconda:
+
+```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
+python -m pip install magsurveypy
+mspy --version
+```
+
+Using a dedicated Conda environment also avoids restrictions associated with
+some system-managed macOS Python installations.
+
+For later sessions:
+
+```bash
+conda activate magsurveypy
+mspy --version
+```
+
+#### Linux
+
+The same isolated workflow can be used:
+
+```bash
+conda create -n magsurveypy python=3.12 -y
+conda activate magsurveypy
+python -m pip install --upgrade pip
+python -m pip install magsurveypy
+mspy --version
+```
+
+### Direct pip installation
+
+If a suitable Python environment is already available, Conda is not required:
+
+```bash
+python -m pip install magsurveypy
+mspy --version
+```
+
+Inside an activated Conda environment, the shorter form also works:
+
+```bash
+pip install magsurveypy
+```
+
+To install the current release explicitly:
+
+```bash
+python -m pip install magsurveypy==1.0.2
+```
+
+For more detailed installation guidance, see
+[docs/INSTALL.md](docs/INSTALL.md).
 
 ## Quick start
 

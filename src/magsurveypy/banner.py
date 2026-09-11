@@ -2,7 +2,7 @@
 
 The banner is kept separate from the scientific processing engine so terminal
 branding cannot affect processing logic.  It uses UTF-8 box/Braille characters
-when the terminal supports them and adds ANSI 256-colour styling only after
+when the terminal supports them and adds theme-neutral ANSI styling only after
 padding each line, so escape sequences never move the right border.
 """
 from __future__ import annotations
@@ -11,9 +11,9 @@ import os
 import sys
 
 RESET = "\x1b[0m"
-DIM_GRAY = "\x1b[2;38;5;245m"
-BLACK = "\x1b[38;5;16m"
-BOLD_BLACK = "\x1b[1;38;5;16m"
+DIM_DEFAULT = "\x1b[2;39m"
+DEFAULT_FG = "\x1b[39m"
+BOLD_DEFAULT = "\x1b[1;39m"
 
 INNER_WIDTH = 77
 
@@ -76,7 +76,7 @@ def _box_line(text: str, colour: bool, spans=()) -> str:
         pos = end
     if pos < INNER_WIDTH:
         pieces.append(plain[pos:])
-    return DIM_GRAY + "│" + RESET + "".join(pieces) + DIM_GRAY + "│" + RESET
+    return DIM_DEFAULT + "│" + RESET + "".join(pieces) + DIM_DEFAULT + "│" + RESET
 
 
 def banner_text(version: str = "1.0.2", author: str = "Alexandru Hegyi, PhD",
@@ -99,7 +99,7 @@ def banner_text(version: str = "1.0.2", author: str = "Alexandru Hegyi, PhD",
     lines = []
     top = "┌" + "─" * INNER_WIDTH + "┐"
     bottom = "└" + "─" * INNER_WIDTH + "┘"
-    lines.append((DIM_GRAY + top + RESET) if colour else top)
+    lines.append((DIM_DEFAULT + top + RESET) if colour else top)
 
     # Compact two-column composition.  Right column starts at character 24.
     for i in range(5):
@@ -110,19 +110,19 @@ def banner_text(version: str = "1.0.2", author: str = "Alexandru Hegyi, PhD",
         for j, ch in enumerate(r[:INNER_WIDTH-start]):
             chars[start+j] = ch
         text = "".join(chars)
-        spans = [(3, min(21, len(text)), BLACK)]
+        spans = [(3, min(21, len(text)), DEFAULT_FG)]
         if i == 1:
-            spans.append((24, min(24+len(r), INNER_WIDTH), BOLD_BLACK))
+            spans.append((24, min(24+len(r), INNER_WIDTH), BOLD_DEFAULT))
         elif i in (2,3,4):
-            spans.append((24, min(24+len(r), INNER_WIDTH), BLACK))
+            spans.append((24, min(24+len(r), INNER_WIDTH), DEFAULT_FG))
         lines.append(_box_line(text, colour, spans))
 
     contact = f"{website} | {email}"
     cstart = max(2, INNER_WIDTH - len(contact) - 1)
     contact_line = " " * cstart + contact
     lines.append(_box_line(contact_line, colour,
-                           [(cstart, min(cstart+len(contact), INNER_WIDTH), BLACK)]))
-    lines.append((DIM_GRAY + bottom + RESET) if colour else bottom)
+                           [(cstart, min(cstart+len(contact), INNER_WIDTH), DEFAULT_FG)]))
+    lines.append((DIM_DEFAULT + bottom + RESET) if colour else bottom)
     return "\n".join(lines)
 
 
